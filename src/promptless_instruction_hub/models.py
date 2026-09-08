@@ -39,14 +39,14 @@ def validate_identifier(value: str, field_name: str) -> str:
 
 
 def validate_asset_ref(value: str) -> str:
-    """Validate a plugin reference in `kind:id` form."""
+    """Validate an asset reference in `kind:id` form."""
 
     kind, separator, asset_id = value.partition(":")
     if separator != ":":
         msg = "plugin includes must use kind:id asset references"
         raise ValueError(msg)
     if kind not in ASSET_KINDS:
-        msg = f"unknown asset kind in plugin reference: {kind}"
+        msg = f"unknown asset kind in reference: {kind}"
         raise ValueError(msg)
     validate_identifier(asset_id, "asset reference id")
     return value
@@ -186,7 +186,7 @@ class LoadedAsset(BaseModel):
 
     @property
     def ref(self) -> str:
-        """Return the plugin reference form for this asset."""
+        """Return the `kind:id` reference for this asset."""
 
         return f"{self.type}:{self.id}"
 

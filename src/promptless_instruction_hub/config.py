@@ -16,6 +16,9 @@ RELEASE_MANIFEST_PATH = Path("hub.release.json")
 STABLE_CHANNEL_PATH = Path("hub.stable.json")
 REPO_CONTEXT_PATH = Path("hub.repo-context.json")
 MANAGED_RUNTIME_MANIFEST_PATH = Path("hub.managed-runtimes.json")
+MIGRATION_GUIDE_URL = (
+    "https://github.com/Promptless/instruction-hub-toolchain/blob/main/README.md#migrating-existing-hubs"
+)
 
 
 def load_hub_config(hub_root: Path) -> HubConfig:
@@ -30,7 +33,7 @@ def load_hub_config(hub_root: Path) -> HubConfig:
         msg = (
             f"{config_path}: legacy hub configuration; replace plugin_id/plugin_name with marketplace.id/name, "
             "rename stable_packages to stable_plugins, and move packages/*.yaml to plugins/. "
-            "IDs are now literal; see README.md#migrating-existing-hubs for installation changes."
+            f"IDs are now literal; see {MIGRATION_GUIDE_URL} for installation changes."
         )
         raise InstructionHubError(msg)
     try:
@@ -45,7 +48,10 @@ def load_plugins(hub_root: Path) -> dict[str, PluginDefinition]:
 
     plugins: dict[str, PluginDefinition] = {}
     if (hub_root / "packages").exists():
-        msg = f"{hub_root / 'packages'}: legacy plugin directory; move packages/*.yaml to plugins/ and remove packages/"
+        msg = (
+            f"{hub_root / 'packages'}: legacy plugin directory; move packages/*.yaml to plugins/ and remove packages/. "
+            f"See {MIGRATION_GUIDE_URL} for installation changes."
+        )
         raise InstructionHubError(msg)
     plugins_dir = hub_root / PLUGIN_DIR
     if not plugins_dir.exists():

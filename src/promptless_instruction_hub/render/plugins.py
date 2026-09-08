@@ -23,7 +23,7 @@ def render_target_plugins(
     config: HubConfig,
     plugins: tuple[StablePlugin, ...],
 ) -> tuple[ManagedRuntimeRecord, ...]:
-    """Render per-plugin target plugin directories and target marketplace manifests."""
+    """Render plugin directories and marketplace manifests for each target."""
 
     managed_runtimes: list[ManagedRuntimeRecord] = []
     for marketplace_root in (".agents/plugins", ".claude-plugin", ".cursor-plugin"):

@@ -45,7 +45,7 @@ class ValidationResult:
 
 
 def validate_hub(hub_root: Path) -> ValidationResult:
-    """Validate config, plugins, target support, secrets, and plugin refs."""
+    """Validate config, plugins, target support, secrets, and asset references."""
 
     root = hub_root.resolve()
     config = load_hub_config(root)

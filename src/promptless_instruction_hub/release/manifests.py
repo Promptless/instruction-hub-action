@@ -59,7 +59,7 @@ def build_release_version_basis(
         },
         "stable_packages": validation.config.stable_plugins,
         "targets": validation.config.targets,
-        "packages": [_package_version_basis(stable_package) for stable_package in validation.stable_plugins],
+        "packages": [_plugin_version_basis(stable_plugin) for stable_plugin in validation.stable_plugins],
         "target_hashes": build_target_hashes(output_root, validation),
         "managed_runtimes": [runtime.to_manifest() for runtime in managed_runtimes],
     }
@@ -107,11 +107,11 @@ def _asset_manifest(asset: LoadedAsset) -> dict[str, JsonValue]:
     }
 
 
-def _package_version_basis(stable_package: StablePlugin) -> dict[str, JsonValue]:
-    package = stable_package.definition
+def _plugin_version_basis(stable_plugin: StablePlugin) -> dict[str, JsonValue]:
+    plugin = stable_plugin.definition
     return {
-        "id": package.id,
-        "name": package.name,
-        "includes": sorted(package.includes),
-        "assets": [_asset_manifest(asset) for asset in stable_package.assets],
+        "id": plugin.id,
+        "name": plugin.name,
+        "includes": sorted(plugin.includes),
+        "assets": [_asset_manifest(asset) for asset in stable_plugin.assets],
     }

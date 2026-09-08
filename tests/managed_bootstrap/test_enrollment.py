@@ -700,7 +700,8 @@ def test_bootstrap_concurrent_hosts_preserve_shared_state_file(tmp_path: Path) -
         server.stop()
 
 
-def test_bootstrap_concurrent_pig_versions_enroll_once(tmp_path: Path) -> None:
+@pytest.mark.parametrize("older_plugin_id", ["pig", "promptless-instruction-hub-pig"])
+def test_bootstrap_concurrent_pig_versions_enroll_once(tmp_path: Path, older_plugin_id: str) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     build_hub(hub_root)
@@ -710,18 +711,18 @@ def test_bootstrap_concurrent_pig_versions_enroll_once(tmp_path: Path) -> None:
     newer_process: subprocess.Popen[str] | None = None
     try:
         # Overlapping starts from two installed pig versions share one host credential.
-        # Starting both at once must open exactly one browser approval.
+        # This also holds across the migration from a prefixed plugin ID to pig.
         home = tmp_path / "home"
         older_plugin = _clone_plugin_with_identity(
             hub_root / "dist/claude/pig",
             tmp_path / "pig-older",
-            plugin_id="promptless-instruction-hub-pig",
+            plugin_id=older_plugin_id,
             package_id="pig",
         )
         newer_plugin = _clone_plugin_with_identity(
             hub_root / "dist/claude/pig",
             tmp_path / "pig-newer",
-            plugin_id="promptless-instruction-hub-pig",
+            plugin_id="pig",
             package_id="pig",
         )
 
@@ -879,7 +880,7 @@ def test_bootstrap_configures_codex_and_claude_and_reports_metadata(tmp_path: Pa
         assert codex_callback_state != claude_callback_state
         assert server.session_requests[0]["deployment_instance_id"] == "worker-local-1"
         assert server.session_requests[0]["target"] == "codex"
-        assert server.session_requests[0]["plugin_id"] == "promptless-instruction-hub-pig"
+        assert server.session_requests[0]["plugin_id"] == "pig"
         assert server.session_requests[0]["plugin_version"] == "0.1.0"
         assert server.session_requests[0]["package_id"] == "pig"
         assert server.session_requests[0]["bootstrap_version"] == "0.2.9"

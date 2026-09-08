@@ -248,7 +248,7 @@ IDs; it has no generated marketplace manifest.
 `pig init --org Acme` defaults to marketplace ID `acme-instruction-hub` and
 display name `Acme Instruction Hub`. Override those with `--marketplace-id` and
 `--marketplace-name`. `plugin_version` remains the shared version floor for all
-compiled plugins; publication advances it when generated output changes.
+compiled plugins; publication advances the generated version when output changes.
 
 ### Migrating existing hubs
 
@@ -276,8 +276,8 @@ skill namespaces, choose explicit IDs such as `acme-dev` for customer plugins.
 The compiler never adds that prefix automatically. The managed PIG plugin
 continues to require the ID `pig`.
 
-Version 1 release and enrollment wire formats retain their existing field names
-for deployed readers: `plugin` contains marketplace metadata and the shared
+Version 1 release manifests and enrollment requests retain their existing field
+names for deployed readers: `plugin` contains marketplace metadata and the shared
 plugin version, `stable_packages` / `packages` describe plugins, and runtime
 `package_id` carries the source plugin ID. Runtime `plugin_id` now matches the
 literal ID in the native plugin manifest.

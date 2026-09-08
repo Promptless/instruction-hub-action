@@ -29,9 +29,9 @@ def test_init_creates_empty_hub_contract(tmp_path: Path) -> None:
     assert (hub_root / ".cursor-plugin").is_dir()
     assert (hub_root / "assets/skills").is_dir()
     assert (hub_root / "plugins/pig.yaml").exists()
-    assert sorted(path.name for path in (hub_root / "packages").iterdir()) == ["pig.yaml"]
-    assert validation.config.plugin_id == "acme-instruction-hub"
-    assert validation.config.stable_packages == ["pig"]
+    assert sorted(path.name for path in (hub_root / "plugins").iterdir()) == ["pig.yaml"]
+    assert validation.config.marketplace.id == "acme-instruction-hub"
+    assert validation.config.stable_plugins == ["pig"]
     assert validation.stable_assets == ()
 
 
