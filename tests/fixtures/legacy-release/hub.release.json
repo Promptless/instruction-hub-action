@@ -1,0 +1,48 @@
+{
+  "assets": [],
+  "managed_runtimes": [],
+  "org": "Acme",
+  "plugin": {
+    "id": "acme-instruction-hub",
+    "name": "Acme Instruction Hub",
+    "version": "0.1.7"
+  },
+  "release_hash": "665a6a010d94112d0f71767f32d321456a6fd2b0f6aee4c31ca2428acc53d942",
+  "release_id": "0.1.7+d785083cd2db",
+  "schema_version": 1,
+  "stable_packages": [
+    "pig"
+  ],
+  "target_hashes": {
+    "cursor": "9b69e6885c7da96c25216a82a5653cb96eda5998ce4f315b8963116c7fb03894"
+  },
+  "targets": [
+    "cursor"
+  ],
+  "version_basis": {
+    "managed_runtimes": [],
+    "org": "Acme",
+    "packages": [
+      {
+        "assets": [],
+        "id": "pig",
+        "includes": [],
+        "name": "PIG"
+      }
+    ],
+    "plugin": {
+      "id": "acme-instruction-hub",
+      "name": "Acme Instruction Hub",
+      "version": "0.1.7"
+    },
+    "stable_packages": [
+      "pig"
+    ],
+    "target_hashes": {
+      "cursor": "9b69e6885c7da96c25216a82a5653cb96eda5998ce4f315b8963116c7fb03894"
+    },
+    "targets": [
+      "cursor"
+    ]
+  }
+}

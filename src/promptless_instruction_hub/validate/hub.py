@@ -6,16 +6,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from promptless_instruction_hub.assets import load_assets, validate_no_literal_secrets, validate_no_symlinks
-from promptless_instruction_hub.config import load_hub_config, load_packages
+from promptless_instruction_hub.config import load_hub_config, load_plugins
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.mcp_config import read_mcp_servers
 from promptless_instruction_hub.models import (
-    PIG_PACKAGE_ID,
+    PIG_PLUGIN_ID,
     UPDATE_INSTRUCTION_HUB_SKILL_ID,
     HubConfig,
     LoadedAsset,
-    PackageDefinition,
-    StablePackage,
+    PluginDefinition,
+    StablePlugin,
 )
 
 SUPPORT_MODES_BY_ASSET_TYPE = {
@@ -33,35 +33,35 @@ class ValidationResult:
     """Loaded and validated Instruction Hub source state."""
 
     config: HubConfig
-    packages: dict[str, PackageDefinition]
+    plugins: dict[str, PluginDefinition]
     assets: dict[str, LoadedAsset]
-    stable_packages: tuple[StablePackage, ...]
+    stable_plugins: tuple[StablePlugin, ...]
 
     @property
     def stable_assets(self) -> tuple[LoadedAsset, ...]:
-        """Return stable assets derived from the configured stable packages."""
+        """Return stable assets derived from the configured stable plugins."""
 
-        return _resolve_stable_assets(self.stable_packages)
+        return _resolve_stable_assets(self.stable_plugins)
 
 
 def validate_hub(hub_root: Path) -> ValidationResult:
-    """Validate config, packages, target support, secrets, and package refs."""
+    """Validate config, plugins, target support, secrets, and plugin refs."""
 
     root = hub_root.resolve()
     config = load_hub_config(root)
-    packages = load_packages(root)
+    plugins = load_plugins(root)
     validate_no_symlinks(root)
     assets = load_assets(root)
     validate_no_literal_secrets(root)
     _validate_target_support(config, assets)
     _validate_mcp_assets(assets)
-    _validate_managed_skill_reservations(packages)
-    stable_packages = _resolve_stable_packages(config, packages, assets)
+    _validate_managed_skill_reservations(plugins)
+    stable_plugins = _resolve_stable_plugins(config, plugins, assets)
     return ValidationResult(
         config=config,
-        packages=packages,
+        plugins=plugins,
         assets=assets,
-        stable_packages=stable_packages,
+        stable_plugins=stable_plugins,
     )
 
 
@@ -90,35 +90,35 @@ def _validate_mcp_assets(assets: dict[str, LoadedAsset]) -> None:
             read_mcp_servers(asset.path, default_server_name=asset.id)
 
 
-def _validate_managed_skill_reservations(packages: dict[str, PackageDefinition]) -> None:
-    pig_package = packages.get(PIG_PACKAGE_ID)
+def _validate_managed_skill_reservations(plugins: dict[str, PluginDefinition]) -> None:
+    pig_plugin = plugins.get(PIG_PLUGIN_ID)
     reserved_ref = f"skill:{UPDATE_INSTRUCTION_HUB_SKILL_ID}"
-    if pig_package is not None and reserved_ref in pig_package.includes:
-        msg = f"package {PIG_PACKAGE_ID!r} cannot include reserved managed asset {reserved_ref!r}"
+    if pig_plugin is not None and reserved_ref in pig_plugin.includes:
+        msg = f"plugin {PIG_PLUGIN_ID!r} cannot include reserved managed asset {reserved_ref!r}"
         raise InstructionHubError(msg)
 
 
-def _resolve_stable_packages(
+def _resolve_stable_plugins(
     config: HubConfig,
-    packages: dict[str, PackageDefinition],
+    plugins: dict[str, PluginDefinition],
     assets: dict[str, LoadedAsset],
-) -> tuple[StablePackage, ...]:
-    stable_packages: list[StablePackage] = []
+) -> tuple[StablePlugin, ...]:
+    stable_plugins: list[StablePlugin] = []
     missing_refs: set[str] = set()
-    for package_id in config.stable_packages:
-        package = packages.get(package_id)
-        if package is None:
-            msg = f"stable package not found: {package_id}"
+    for plugin_id in config.stable_plugins:
+        plugin = plugins.get(plugin_id)
+        if plugin is None:
+            msg = f"stable plugin not found: {plugin_id}"
             raise InstructionHubError(msg)
-        missing_refs.update(ref for ref in package.includes if ref not in assets)
-        package_assets = tuple(assets[ref] for ref in sorted(package.includes) if ref in assets)
-        stable_packages.append(StablePackage(definition=package, assets=package_assets))
+        missing_refs.update(ref for ref in plugin.includes if ref not in assets)
+        plugin_assets = tuple(assets[ref] for ref in sorted(plugin.includes) if ref in assets)
+        stable_plugins.append(StablePlugin(definition=plugin, assets=plugin_assets))
     if missing_refs:
-        msg = f"package includes unknown asset refs: {', '.join(sorted(missing_refs))}"
+        msg = f"plugin includes unknown asset refs: {', '.join(sorted(missing_refs))}"
         raise InstructionHubError(msg)
-    return tuple(stable_packages)
+    return tuple(stable_plugins)
 
 
-def _resolve_stable_assets(stable_packages: tuple[StablePackage, ...]) -> tuple[LoadedAsset, ...]:
-    assets_by_ref = {asset.ref: asset for stable_package in stable_packages for asset in stable_package.assets}
+def _resolve_stable_assets(stable_plugins: tuple[StablePlugin, ...]) -> tuple[LoadedAsset, ...]:
+    assets_by_ref = {asset.ref: asset for stable_plugin in stable_plugins for asset in stable_plugin.assets}
     return tuple(assets_by_ref[ref] for ref in sorted(assets_by_ref))

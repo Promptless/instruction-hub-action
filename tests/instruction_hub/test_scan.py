@@ -28,7 +28,7 @@ def test_init_creates_empty_hub_contract(tmp_path: Path) -> None:
     assert (hub_root / ".claude-plugin").is_dir()
     assert (hub_root / ".cursor-plugin").is_dir()
     assert (hub_root / "assets/skills").is_dir()
-    assert (hub_root / "packages/pig.yaml").exists()
+    assert (hub_root / "plugins/pig.yaml").exists()
     assert sorted(path.name for path in (hub_root / "packages").iterdir()) == ["pig.yaml"]
     assert validation.config.plugin_id == "acme-instruction-hub"
     assert validation.config.stable_packages == ["pig"]
@@ -45,7 +45,7 @@ def test_scan_imports_skills_and_inventories_repo_context(tmp_path: Path) -> Non
     assert result.imported_mcps == ("repo-mcp",)
     assert result.inventoried_context_files == ("AGENTS.md", "CLAUDE.md")
     assert (hub_root / "assets/skills/review-docs/SKILL.md").read_text().startswith("# Review Docs")
-    pig_package = (hub_root / "packages/pig.yaml").read_text()
+    pig_package = (hub_root / "plugins/pig.yaml").read_text()
     assert "mcp:repo-mcp" in pig_package
     assert "skill:review-docs" in pig_package
     assert not (hub_root / "assets/skills/review-docs/asset.yaml").exists()
@@ -61,13 +61,13 @@ def test_scan_imports_skills_and_inventories_repo_context(tmp_path: Path) -> Non
 def test_scan_rejects_legacy_core_hub_before_mutating(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    pig_package = hub_root / "packages/pig.yaml"
-    core_package = hub_root / "packages/core.yaml"
+    pig_package = hub_root / "plugins/pig.yaml"
+    core_package = hub_root / "plugins/core.yaml"
     pig_package.rename(core_package)
     core_package.write_text(core_package.read_text().replace("id: pig\nname: PIG", "id: core\nname: Core"))
     (hub_root / "hub.yaml").write_text((hub_root / "hub.yaml").read_text().replace("- pig\n", "- core\n"))
 
-    with pytest.raises(InstructionHubError, match="required 'pig' package"):
+    with pytest.raises(InstructionHubError, match="required 'pig' plugin"):
         scan_hub(hub_root, FIXTURES / "dogfood-source")
 
     assert not (hub_root / "assets/skills/review-docs").exists()
@@ -99,7 +99,7 @@ def test_scan_imports_cursor_only_mcp_config(tmp_path: Path) -> None:
 
     assert result.imported_skills == ()
     assert result.imported_mcps == ("cursor-mcp",)
-    assert "mcp:cursor-mcp" in (hub_root / "packages/pig.yaml").read_text()
+    assert "mcp:cursor-mcp" in (hub_root / "plugins/pig.yaml").read_text()
     mcp_metadata = (hub_root / "assets/mcps/cursor-mcp.asset.yaml").read_text()
     assert "id:" not in mcp_metadata
     assert "type:" not in mcp_metadata
@@ -144,7 +144,7 @@ def test_scan_imports_cursor_mcp_override_when_root_differs(tmp_path: Path) -> N
     build_hub(hub_root)
 
     assert result.imported_mcps == ("repo-mcp", "cursor-mcp")
-    pig_package = (hub_root / "packages/pig.yaml").read_text()
+    pig_package = (hub_root / "plugins/pig.yaml").read_text()
     assert "mcp:repo-mcp" in pig_package
     assert "mcp:cursor-mcp" in pig_package
     codex_mcp_config = json.loads((hub_root / "dist/codex/pig/.mcp.json").read_text())

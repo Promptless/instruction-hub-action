@@ -16,8 +16,8 @@ SupportMode = Literal["agent-skill", "native", "projected", "unsupported"]
 
 SUPPORTED_HARNESSES: tuple[Harness, ...] = ("claude", "codex", "gemini", "cursor")
 ASSET_KINDS: tuple[AssetKind, ...] = ("skill", "rule", "agent", "command", "hook", "mcp")
-PIG_PACKAGE_ID = "pig"
-PIG_PACKAGE_NAME = "PIG"
+PIG_PLUGIN_ID = "pig"
+PIG_PLUGIN_NAME = "PIG"
 UPDATE_INSTRUCTION_HUB_SKILL_ID = "update-instruction-hub"
 IDENTIFIER_PATTERN = r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
 IDENTIFIER_RE = re.compile(IDENTIFIER_PATTERN)
@@ -39,14 +39,14 @@ def validate_identifier(value: str, field_name: str) -> str:
 
 
 def validate_asset_ref(value: str) -> str:
-    """Validate a package reference in `kind:id` form."""
+    """Validate a plugin reference in `kind:id` form."""
 
     kind, separator, asset_id = value.partition(":")
     if separator != ":":
-        msg = "package includes must use kind:id asset references"
+        msg = "plugin includes must use kind:id asset references"
         raise ValueError(msg)
     if kind not in ASSET_KINDS:
-        msg = f"unknown asset kind in package reference: {kind}"
+        msg = f"unknown asset kind in plugin reference: {kind}"
         raise ValueError(msg)
     validate_identifier(asset_id, "asset reference id")
     return value
@@ -70,24 +70,32 @@ class TargetSupport(BaseModel):
         return self
 
 
+class MarketplaceDefinition(BaseModel):
+    """Literal marketplace identity shared by every target."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str = Field(min_length=1)
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        """Ensure marketplace IDs are stable kebab-case identifiers."""
+
+        return validate_identifier(value, "marketplace.id")
+
+
 class HubConfig(BaseModel):
     """Root `hub.yaml` configuration."""
 
     model_config = ConfigDict(extra="forbid")
 
     org: str = Field(min_length=1)
-    plugin_id: str
-    plugin_name: str = Field(min_length=1)
+    marketplace: MarketplaceDefinition
     plugin_version: str
-    stable_packages: list[str] = Field(default_factory=lambda: [PIG_PACKAGE_ID], min_length=1)
+    stable_plugins: list[str] = Field(default_factory=lambda: [PIG_PLUGIN_ID], min_length=1)
     targets: list[Harness] = Field(default_factory=lambda: list(SUPPORTED_HARNESSES), min_length=1)
-
-    @field_validator("plugin_id")
-    @classmethod
-    def validate_plugin_id(cls, value: str) -> str:
-        """Ensure plugin IDs are stable kebab-case identifiers."""
-
-        return validate_identifier(value, "plugin_id")
 
     @field_validator("plugin_version")
     @classmethod
@@ -99,17 +107,17 @@ class HubConfig(BaseModel):
             raise ValueError(msg)
         return value
 
-    @field_validator("stable_packages")
+    @field_validator("stable_plugins")
     @classmethod
-    def validate_stable_packages(cls, value: list[str]) -> list[str]:
-        """Ensure stable package references are valid package IDs."""
+    def validate_stable_plugins(cls, value: list[str]) -> list[str]:
+        """Ensure stable plugin references are valid plugin IDs."""
 
-        _validate_unique(value, "stable_packages")
-        package_ids = [validate_identifier(package_id, "stable package id") for package_id in value]
-        if PIG_PACKAGE_ID not in package_ids:
-            msg = f"stable_packages must include the required {PIG_PACKAGE_ID!r} package"
+        _validate_unique(value, "stable_plugins")
+        plugin_ids = [validate_identifier(plugin_id, "stable plugin id") for plugin_id in value]
+        if PIG_PLUGIN_ID not in plugin_ids:
+            msg = f"stable_plugins must include the required {PIG_PLUGIN_ID!r} plugin"
             raise ValueError(msg)
-        return package_ids
+        return plugin_ids
 
     @field_validator("targets")
     @classmethod
@@ -120,8 +128,8 @@ class HubConfig(BaseModel):
         return value
 
 
-class PackageDefinition(BaseModel):
-    """Product-facing package grouping for governed assets."""
+class PluginDefinition(BaseModel):
+    """Product-facing plugin grouping for governed assets."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -133,16 +141,16 @@ class PackageDefinition(BaseModel):
     @field_validator("id")
     @classmethod
     def validate_id(cls, value: str) -> str:
-        """Ensure package IDs are stable kebab-case identifiers."""
+        """Ensure plugin IDs are stable kebab-case identifiers."""
 
-        return validate_identifier(value, "package id")
+        return validate_identifier(value, "plugin id")
 
     @field_validator("includes")
     @classmethod
     def validate_includes(cls, value: list[str]) -> list[str]:
-        """Ensure package includes are structured asset references."""
+        """Ensure plugin includes are structured asset references."""
 
-        _validate_unique(value, "package includes")
+        _validate_unique(value, "plugin includes")
         return [validate_asset_ref(asset_ref) for asset_ref in value]
 
 
@@ -178,7 +186,7 @@ class LoadedAsset(BaseModel):
 
     @property
     def ref(self) -> str:
-        """Return the package reference form for this asset."""
+        """Return the plugin reference form for this asset."""
 
         return f"{self.type}:{self.id}"
 
@@ -191,10 +199,10 @@ class LoadedAsset(BaseModel):
 
 
 @dataclass(frozen=True)
-class StablePackage:
-    """Resolved stable package and the assets to render into its plugin payload."""
+class StablePlugin:
+    """Resolved stable plugin and the assets to render into its plugin payload."""
 
-    definition: PackageDefinition
+    definition: PluginDefinition
     assets: tuple[LoadedAsset, ...]
 
 

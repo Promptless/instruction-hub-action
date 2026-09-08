@@ -5,39 +5,27 @@ from __future__ import annotations
 from pathlib import Path
 
 from promptless_instruction_hub.fs import JsonValue
-from promptless_instruction_hub.models import PIG_PACKAGE_ID, HubConfig, PackageDefinition
+from promptless_instruction_hub.models import PIG_PLUGIN_ID, HubConfig, PluginDefinition
 
 RenderedAssets = dict[str, list[str]]
 
 
-def base_plugin_manifest(config: HubConfig, package: PackageDefinition) -> dict[str, JsonValue]:
+def base_plugin_manifest(config: HubConfig, plugin: PluginDefinition) -> dict[str, JsonValue]:
     """Return manifest fields shared by all generated target plugins."""
 
     return {
-        "name": package_plugin_id(config, package),
+        "name": plugin.id,
         "version": config.plugin_version,
-        "description": plugin_description(config, package),
+        "description": plugin_description(config, plugin),
     }
 
 
-def package_plugin_id(config: HubConfig, package: PackageDefinition) -> str:
-    """Return the hub-scoped plugin identifier for a stable package."""
-
-    return f"{config.plugin_id}-{package.id}"
-
-
-def marketplace_name(config: HubConfig) -> str:
-    """Return the canonical marketplace name for an Instruction Hub."""
-
-    return f"{config.plugin_id}-marketplace"
-
-
-def plugin_description(config: HubConfig, package: PackageDefinition) -> str:
+def plugin_description(config: HubConfig, plugin: PluginDefinition) -> str:
     """Return the stable user-facing plugin description."""
 
-    if package.id == PIG_PACKAGE_ID:
+    if plugin.id == PIG_PLUGIN_ID:
         return f"Promptless Instruction Governance instructions and lifecycle integration for {config.org}."
-    return f"Governed agent instructions for {config.org}: {package.name}."
+    return f"Governed agent instructions for {config.org}: {plugin.name}."
 
 
 def manifest_key_for(asset_type: str) -> str:

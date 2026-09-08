@@ -6,12 +6,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from promptless_instruction_hub.fs import write_json
-from promptless_instruction_hub.models import PIG_PACKAGE_ID, HubConfig, PackageDefinition, StablePackage
+from promptless_instruction_hub.models import PIG_PLUGIN_ID, HubConfig, PluginDefinition, StablePlugin
 from promptless_instruction_hub.render.common import (
     RenderedAssets,
     base_plugin_manifest,
-    marketplace_name,
-    package_plugin_id,
     plugin_description,
 )
 
@@ -19,20 +17,20 @@ from promptless_instruction_hub.render.common import (
 def write_manifest(
     target_root: Path,
     config: HubConfig,
-    package: PackageDefinition,
+    plugin: PluginDefinition,
     rendered: RenderedAssets,
     mcp_server_names: list[str],
 ) -> None:
     """Write the Codex plugin manifest."""
 
-    manifest = base_plugin_manifest(config, package)
-    description = plugin_description(config, package)
-    if package.id == PIG_PACKAGE_ID:
+    manifest = base_plugin_manifest(config, plugin)
+    description = plugin_description(config, plugin)
+    if plugin.id == PIG_PLUGIN_ID:
         long_description = description
         default_prompt = "Use PIG instructions and lifecycle integration for this session."
     else:
-        long_description = f"{package.name} distributes governed agent instructions for {config.org}."
-        default_prompt = f"Use {package.name} instructions for this task."
+        long_description = f"{plugin.name} distributes governed agent instructions for {config.org}."
+        default_prompt = f"Use {plugin.name} instructions for this task."
     manifest["author"] = {"name": config.org}
     if rendered.get("skills"):
         manifest["skills"] = "./skills/"
@@ -41,7 +39,7 @@ def write_manifest(
     if mcp_server_names:
         manifest["mcpServers"] = "./.mcp.json"
     manifest["interface"] = {
-        "displayName": package.name,
+        "displayName": plugin.name,
         "shortDescription": description,
         "longDescription": long_description,
         "developerName": config.org,
@@ -52,20 +50,20 @@ def write_manifest(
     write_json(target_root / ".codex-plugin/plugin.json", manifest)
 
 
-def write_marketplace(output_root: Path, config: HubConfig, packages: Sequence[StablePackage]) -> None:
+def write_marketplace(output_root: Path, config: HubConfig, plugins: Sequence[StablePlugin]) -> None:
     """Write the Codex repository marketplace manifest."""
 
     marketplace = {
-        "name": marketplace_name(config),
-        "interface": {"displayName": f"{config.plugin_name} Marketplace"},
+        "name": config.marketplace.id,
+        "interface": {"displayName": config.marketplace.name},
         "plugins": [
             {
-                "name": package_plugin_id(config, stable_package.definition),
-                "source": {"source": "local", "path": f"./dist/codex/{stable_package.definition.id}"},
+                "name": stable_plugin.definition.id,
+                "source": {"source": "local", "path": f"./dist/codex/{stable_plugin.definition.id}"},
                 "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
                 "category": "Productivity",
             }
-            for stable_package in packages
+            for stable_plugin in plugins
         ],
     }
     write_json(output_root / ".agents/plugins/marketplace.json", marketplace)

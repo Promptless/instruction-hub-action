@@ -7,7 +7,7 @@ from pathlib import Path
 from promptless_instruction_hub.config import RELEASE_MANIFEST_PATH, STABLE_CHANNEL_PATH
 from promptless_instruction_hub.fs import JsonValue, directory_hash, write_json
 from promptless_instruction_hub.managed_runtime import ManagedRuntimeRecord
-from promptless_instruction_hub.models import LoadedAsset, StablePackage
+from promptless_instruction_hub.models import LoadedAsset, StablePlugin
 from promptless_instruction_hub.release.hashing import stable_hash
 from promptless_instruction_hub.validate.hub import ValidationResult
 
@@ -20,15 +20,17 @@ def build_release_manifest(
     """Build the deterministic release manifest for generated target output."""
 
     target_hashes = build_target_hashes(output_root, validation)
+    # Keep v1 wire keys for deployed release readers and publish history.
+    # The source model uses marketplace and plugin identities.
     base_manifest: dict[str, JsonValue] = {
         "schema_version": 1,
         "org": validation.config.org,
         "plugin": {
-            "id": validation.config.plugin_id,
-            "name": validation.config.plugin_name,
+            "id": validation.config.marketplace.id,
+            "name": validation.config.marketplace.name,
             "version": validation.config.plugin_version,
         },
-        "stable_packages": validation.config.stable_packages,
+        "stable_packages": validation.config.stable_plugins,
         "targets": validation.config.targets,
         "target_hashes": target_hashes,
         "managed_runtimes": [runtime.to_manifest() for runtime in managed_runtimes],
@@ -51,13 +53,13 @@ def build_release_version_basis(
     return {
         "org": validation.config.org,
         "plugin": {
-            "id": validation.config.plugin_id,
-            "name": validation.config.plugin_name,
+            "id": validation.config.marketplace.id,
+            "name": validation.config.marketplace.name,
             "version": validation.config.plugin_version,
         },
-        "stable_packages": validation.config.stable_packages,
+        "stable_packages": validation.config.stable_plugins,
         "targets": validation.config.targets,
-        "packages": [_package_version_basis(stable_package) for stable_package in validation.stable_packages],
+        "packages": [_package_version_basis(stable_package) for stable_package in validation.stable_plugins],
         "target_hashes": build_target_hashes(output_root, validation),
         "managed_runtimes": [runtime.to_manifest() for runtime in managed_runtimes],
     }
@@ -105,7 +107,7 @@ def _asset_manifest(asset: LoadedAsset) -> dict[str, JsonValue]:
     }
 
 
-def _package_version_basis(stable_package: StablePackage) -> dict[str, JsonValue]:
+def _package_version_basis(stable_package: StablePlugin) -> dict[str, JsonValue]:
     package = stable_package.definition
     return {
         "id": package.id,

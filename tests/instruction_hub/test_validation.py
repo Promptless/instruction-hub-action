@@ -12,40 +12,41 @@ from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hu
 from promptless_instruction_hub.errors import InstructionHubError
 
 
-def test_validate_rejects_empty_stable_packages(tmp_path: Path) -> None:
+def test_validate_rejects_empty_stable_plugins(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
     (hub_root / "hub.yaml").write_text(
         "\n".join(
             [
                 "org: Acme",
-                "plugin_id: acme-instruction-hub",
-                "plugin_name: Acme Instruction Hub",
+                "marketplace:",
+                "  id: acme-instruction-hub",
+                "  name: Acme Instruction Hub",
                 "plugin_version: 0.1.0",
-                "stable_packages: []",
+                "stable_plugins: []",
                 "",
             ]
         )
     )
 
-    with pytest.raises(InstructionHubError, match="stable_packages"):
+    with pytest.raises(InstructionHubError, match="stable_plugins"):
         validate_hub(hub_root)
 
 
 def test_validate_requires_pig_stable_package(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/customer.yaml").write_text("id: customer\nname: Customer\nincludes: []\n")
+    (hub_root / "plugins/customer.yaml").write_text("id: customer\nname: Customer\nincludes: []\n")
     (hub_root / "hub.yaml").write_text((hub_root / "hub.yaml").read_text().replace("- pig\n", "- customer\n"))
 
-    with pytest.raises(InstructionHubError, match="required 'pig' package"):
+    with pytest.raises(InstructionHubError, match="required 'pig' plugin"):
         validate_hub(hub_root)
 
 
 def test_validate_rejects_empty_package_name(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: ''\nincludes: []\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: ''\nincludes: []\n")
 
     with pytest.raises(InstructionHubError, match="name"):
         validate_hub(hub_root)
@@ -54,7 +55,7 @@ def test_validate_rejects_empty_package_name(tmp_path: Path) -> None:
 def test_validate_rejects_unknown_package_refs(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:missing\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:missing\n")
 
     with pytest.raises(InstructionHubError, match="unknown asset refs"):
         validate_hub(hub_root)
@@ -66,7 +67,7 @@ def test_validate_rejects_authored_update_instruction_hub_skill_in_pig(tmp_path:
     init_hub(hub_root)
     skill_root.mkdir(parents=True)
     (skill_root / "SKILL.md").write_text("# Customer updater\n")
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:update-instruction-hub\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:update-instruction-hub\n")
 
     with pytest.raises(InstructionHubError, match="reserved managed asset 'skill:update-instruction-hub'"):
         validate_hub(hub_root)
@@ -75,7 +76,7 @@ def test_validate_rejects_authored_update_instruction_hub_skill_in_pig(tmp_path:
 def test_validate_merges_sparse_target_support_with_defaults(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - rule:partial\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - rule:partial\n")
     (hub_root / "assets/rules/partial.md").write_text("# Partial\n")
     (hub_root / "assets/rules/partial.asset.yaml").write_text(
         "\n".join(
@@ -111,8 +112,8 @@ def test_validate_rejects_unsafe_asset_ids(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "config_text",
     [
-        "org: ''\nplugin_id: acme-instruction-hub\nplugin_name: Acme Instruction Hub\nplugin_version: 0.1.0\n",
-        "org: Acme\nplugin_id: acme-instruction-hub\nplugin_name: ''\nplugin_version: 0.1.0\n",
+        "org: ''\nmarketplace:\n  id: acme-instruction-hub\n  name: Acme Instruction Hub\nplugin_version: 0.1.0\n",
+        "org: Acme\nmarketplace:\n  id: acme-instruction-hub\n  name: ''\nplugin_version: 0.1.0\n",
     ],
 )
 def test_validate_rejects_empty_required_config_strings(tmp_path: Path, config_text: str) -> None:
@@ -131,8 +132,9 @@ def test_validate_rejects_empty_target_list(tmp_path: Path) -> None:
         "\n".join(
             [
                 "org: Acme",
-                "plugin_id: acme-instruction-hub",
-                "plugin_name: Acme Instruction Hub",
+                "marketplace:",
+                "  id: acme-instruction-hub",
+                "  name: Acme Instruction Hub",
                 "plugin_version: 0.1.0",
                 "targets: []",
                 "",
@@ -323,7 +325,7 @@ def test_validate_rejects_malformed_mcp_server_shapes(tmp_path: Path, payload: o
 def test_build_rejects_same_priority_duplicate_mcp_servers(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text(
+    (hub_root / "plugins/pig.yaml").write_text(
         "\n".join(
             [
                 "id: pig",

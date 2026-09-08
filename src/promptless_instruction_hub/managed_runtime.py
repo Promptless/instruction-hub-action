@@ -14,7 +14,7 @@ from typing import Literal
 from promptless_instruction_hub.config import MANAGED_RUNTIME_MANIFEST_PATH
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.fs import JsonValue, read_json_mapping, write_json
-from promptless_instruction_hub.models import PIG_PACKAGE_ID, Harness, HubConfig, PackageDefinition
+from promptless_instruction_hub.models import PIG_PLUGIN_ID, Harness, HubConfig, PluginDefinition
 
 RuntimeStatus = Literal["included"]
 
@@ -89,6 +89,7 @@ class ManagedRuntimeRecord:
 
         data: dict[str, JsonValue] = {
             "id": self.id,
+            # Enrollment still requires the v1 source-identity field.
             "package_id": self.package_id,
             "plugin_id": self.plugin_id,
             "plugin_name": self.plugin_name,
@@ -115,12 +116,11 @@ def render_managed_runtimes(
     target_root: Path,
     target: Harness,
     config: HubConfig,
-    package: PackageDefinition,
+    plugin: PluginDefinition,
 ) -> tuple[ManagedRuntimeRecord, ...]:
-    """Inject managed runtime artifacts when rendering the PIG package for a supported host."""
+    """Inject managed runtime artifacts when rendering the PIG plugin for a supported host."""
 
-    plugin_id = f"{config.plugin_id}-{package.id}"
-    if package.id != PIG_PACKAGE_ID or target not in SUPPORTED_HOST_RUNTIME_TARGETS:
+    if plugin.id != PIG_PLUGIN_ID or target not in SUPPORTED_HOST_RUNTIME_TARGETS:
         return ()
 
     _copy_runtime_bundle(target_root)
@@ -129,9 +129,9 @@ def render_managed_runtimes(
         id=HOST_RUNTIME_ID,
         status="included",
         target=target,
-        package_id=package.id,
-        plugin_id=plugin_id,
-        plugin_name=package.name,
+        package_id=plugin.id,
+        plugin_id=plugin.id,
+        plugin_name=plugin.name,
         plugin_version=config.plugin_version,
         toolchain_version=_toolchain_version(),
         channel=HOST_RUNTIME_CHANNEL,

@@ -164,7 +164,7 @@ def test_release_manifest_schema_matches_generated_contract() -> None:
 def test_instruction_hub_schema_requires_non_empty_lists() -> None:
     schema = json.loads((SCHEMAS / "instruction-hub.schema.json").read_text())
 
-    assert schema["properties"]["stable_packages"]["minItems"] == 1
-    assert schema["properties"]["stable_packages"]["contains"] == {"const": "pig"}
-    assert schema["properties"]["stable_packages"]["default"] == ["pig"]
+    assert schema["properties"]["stable_plugins"]["minItems"] == 1
+    assert schema["properties"]["stable_plugins"]["contains"] == {"const": "pig"}
+    assert schema["properties"]["stable_plugins"]["default"] == ["pig"]
     assert schema["properties"]["targets"]["minItems"] == 1

@@ -8,7 +8,7 @@ from promptless_instruction_hub.config import RELEASE_MANIFEST_PATH
 from promptless_instruction_hub.fs import JsonValue, write_json
 from promptless_instruction_hub.managed_runtime import ManagedRuntimeRecord, render_managed_runtimes
 from promptless_instruction_hub.managed_skills import render_managed_skills
-from promptless_instruction_hub.models import Harness, HubConfig, PackageDefinition, StablePackage
+from promptless_instruction_hub.models import Harness, HubConfig, PluginDefinition, StablePlugin
 import promptless_instruction_hub.render.claude as claude
 import promptless_instruction_hub.render.codex as codex
 import promptless_instruction_hub.render.cursor as cursor
@@ -21,49 +21,49 @@ from promptless_instruction_hub.render.mcp import collect_mcp_servers, write_mcp
 def render_target_plugins(
     output_root: Path,
     config: HubConfig,
-    packages: tuple[StablePackage, ...],
+    plugins: tuple[StablePlugin, ...],
 ) -> tuple[ManagedRuntimeRecord, ...]:
-    """Render per-package target plugin directories and target marketplace manifests."""
+    """Render per-plugin target plugin directories and target marketplace manifests."""
 
     managed_runtimes: list[ManagedRuntimeRecord] = []
     for marketplace_root in (".agents/plugins", ".claude-plugin", ".cursor-plugin"):
         (output_root / marketplace_root).mkdir(parents=True, exist_ok=True)
 
     for target in config.targets:
-        for stable_package in packages:
-            target_root = output_root / "dist" / target / stable_package.definition.id
+        for stable_plugin in plugins:
+            target_root = output_root / "dist" / target / stable_plugin.definition.id
             target_root.mkdir(parents=True, exist_ok=True)
-            assets = list(stable_package.assets)
+            assets = list(stable_plugin.assets)
             rendered = render_assets_for_target(target_root, target, assets)
             mcp_servers = collect_mcp_servers(target, assets)
             if mcp_servers:
                 write_mcp_config(target_root, target, mcp_servers)
             rendered.setdefault("skills", []).extend(
-                render_managed_skills(target_root, target, config, stable_package.definition)
+                render_managed_skills(target_root, target, config, stable_plugin.definition)
             )
-            managed_runtimes.extend(render_managed_runtimes(target_root, target, config, stable_package.definition))
-            _write_manifest(target_root, target, config, stable_package.definition, rendered, mcp_servers)
+            managed_runtimes.extend(render_managed_runtimes(target_root, target, config, stable_plugin.definition))
+            _write_manifest(target_root, target, config, stable_plugin.definition, rendered, mcp_servers)
     if "codex" in config.targets:
-        codex.write_marketplace(output_root, config, packages)
+        codex.write_marketplace(output_root, config, plugins)
     if "claude" in config.targets:
-        claude.write_marketplace(output_root, config, packages)
+        claude.write_marketplace(output_root, config, plugins)
     if "cursor" in config.targets:
-        cursor.write_marketplace(output_root, config, packages)
+        cursor.write_marketplace(output_root, config, plugins)
     return tuple(managed_runtimes)
 
 
 def embed_release_manifest(
     output_root: Path,
     config: HubConfig,
-    packages: tuple[StablePackage, ...],
+    plugins: tuple[StablePlugin, ...],
     release_manifest: dict[str, JsonValue],
 ) -> None:
     """Copy the release manifest into each generated target plugin for local status tools."""
 
     for target in config.targets:
-        for stable_package in packages:
+        for stable_plugin in plugins:
             write_json(
-                output_root / "dist" / target / stable_package.definition.id / RELEASE_MANIFEST_PATH,
+                output_root / "dist" / target / stable_plugin.definition.id / RELEASE_MANIFEST_PATH,
                 release_manifest,
             )
 
@@ -72,17 +72,17 @@ def _write_manifest(
     target_root: Path,
     target: Harness,
     config: HubConfig,
-    package: PackageDefinition,
+    plugin: PluginDefinition,
     rendered: RenderedAssets,
     mcp_servers: dict[str, JsonValue],
 ) -> None:
     if target == "claude":
-        claude.write_manifest(target_root, config, package, rendered, sorted(mcp_servers))
+        claude.write_manifest(target_root, config, plugin, rendered, sorted(mcp_servers))
         return
     if target == "codex":
-        codex.write_manifest(target_root, config, package, rendered, sorted(mcp_servers))
+        codex.write_manifest(target_root, config, plugin, rendered, sorted(mcp_servers))
         return
     if target == "gemini":
-        gemini.write_manifest(target_root, config, package, mcp_servers)
+        gemini.write_manifest(target_root, config, plugin, mcp_servers)
         return
-    cursor.write_manifest(target_root, config, package, rendered)
+    cursor.write_manifest(target_root, config, plugin, rendered)

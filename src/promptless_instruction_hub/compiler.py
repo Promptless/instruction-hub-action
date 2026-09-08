@@ -7,10 +7,17 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from promptless_instruction_hub.config import CONFIG_PATH, PACKAGE_DIR, RELEASE_MANIFEST_PATH, STABLE_CHANNEL_PATH
+from promptless_instruction_hub.config import (
+    CONFIG_PATH,
+    PLUGIN_DIR,
+    RELEASE_MANIFEST_PATH,
+    STABLE_CHANNEL_PATH,
+    load_hub_config,
+    load_plugins,
+)
 from promptless_instruction_hub.errors import BuildCheckFailedError
 from promptless_instruction_hub.fs import JsonValue, replace_tree, trees_equal, write_yaml
-from promptless_instruction_hub.models import PIG_PACKAGE_ID, PIG_PACKAGE_NAME, HubConfig
+from promptless_instruction_hub.models import PIG_PLUGIN_ID, PIG_PLUGIN_NAME, HubConfig, MarketplaceDefinition
 from promptless_instruction_hub.release.manifests import build_release_manifest, write_release_files
 from promptless_instruction_hub.render.plugins import embed_release_manifest, render_target_plugins
 from promptless_instruction_hub.validate.hub import ValidationResult, validate_hub
@@ -60,26 +67,28 @@ def init_hub(
     hub_root: Path,
     *,
     org: str = "Promptless",
-    plugin_id: str | None = None,
-    plugin_name: str | None = None,
+    marketplace_id: str | None = None,
+    marketplace_name: str | None = None,
     plugin_version: str = "0.1.0",
 ) -> Path:
     """Initialize an empty customer-owned Instruction Hub repository."""
 
     root = hub_root.resolve()
-    root.mkdir(parents=True, exist_ok=True)
-    resolved_plugin_id = plugin_id or f"{_slugify(org)}-instruction-hub"
-    resolved_plugin_name = plugin_name or f"{org} Instruction Hub"
+    if (root / CONFIG_PATH).exists():
+        load_hub_config(root)
+    load_plugins(root)
     config = HubConfig(
         org=org,
-        plugin_id=resolved_plugin_id,
-        plugin_name=resolved_plugin_name,
+        marketplace=MarketplaceDefinition(
+            id=marketplace_id if marketplace_id is not None else f"{_slugify(org)}-instruction-hub",
+            name=marketplace_name if marketplace_name is not None else f"{org} Instruction Hub",
+        ),
         plugin_version=plugin_version,
     )
     _write_file_if_missing(root / CONFIG_PATH, config.model_dump())
     _write_file_if_missing(
-        root / PACKAGE_DIR / f"{PIG_PACKAGE_ID}.yaml",
-        {"id": PIG_PACKAGE_ID, "name": PIG_PACKAGE_NAME, "owners": [], "includes": []},
+        root / PLUGIN_DIR / f"{PIG_PLUGIN_ID}.yaml",
+        {"id": PIG_PLUGIN_ID, "name": PIG_PLUGIN_NAME, "owners": [], "includes": []},
     )
     for relative_dir in (
         "assets/skills",
@@ -135,10 +144,10 @@ def verify_hub(hub_root: Path) -> VerifyResult:
 
 
 def _compile_hub(output_root: Path, validation: ValidationResult) -> dict[str, JsonValue]:
-    managed_runtimes = render_target_plugins(output_root, validation.config, validation.stable_packages)
+    managed_runtimes = render_target_plugins(output_root, validation.config, validation.stable_plugins)
     release_manifest = build_release_manifest(output_root, validation, managed_runtimes)
     write_release_files(output_root, release_manifest)
-    embed_release_manifest(output_root, validation.config, validation.stable_packages, release_manifest)
+    embed_release_manifest(output_root, validation.config, validation.stable_plugins, release_manifest)
     return release_manifest
 
 
@@ -164,9 +173,9 @@ def _with_plugin_version(validation: ValidationResult, plugin_version: str) -> V
     config = HubConfig.model_validate({**validation.config.model_dump(), "plugin_version": plugin_version})
     return ValidationResult(
         config=config,
-        packages=validation.packages,
+        plugins=validation.plugins,
         assets=validation.assets,
-        stable_packages=validation.stable_packages,
+        stable_plugins=validation.stable_plugins,
     )
 
 

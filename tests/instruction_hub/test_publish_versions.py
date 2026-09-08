@@ -10,7 +10,7 @@ from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.release.versions import resolve_publish_plugin_version
 
 from .helpers import (
-    _configure_split_package_hub,
+    _configure_split_plugin_hub,
     _write_release_manifest_with_fresh_identity,
 )
 
@@ -18,14 +18,12 @@ from .helpers import (
 def test_publish_version_bumps_when_package_name_changes(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Acme")
-    _configure_split_package_hub(hub_root, targets=("claude", "codex"))
+    _configure_split_plugin_hub(hub_root, targets=("claude", "codex"))
     build_hub(hub_root)
     previous_release_root = tmp_path / "previous-release"
     shutil.copytree(hub_root, previous_release_root)
 
-    (hub_root / "packages/dev.yaml").write_text(
-        "id: dev\nname: Developer Tools\nincludes:\n  - skill:authoring-tools\n"
-    )
+    (hub_root / "plugins/dev.yaml").write_text("id: dev\nname: Developer Tools\nincludes:\n  - skill:authoring-tools\n")
 
     assert resolve_publish_plugin_version(hub_root, previous_release_root=previous_release_root) == "0.1.1"
 
@@ -33,13 +31,13 @@ def test_publish_version_bumps_when_package_name_changes(tmp_path: Path) -> None
 def test_publish_version_bumps_when_package_membership_changes(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Acme")
-    _configure_split_package_hub(hub_root, targets=("claude", "codex"))
+    _configure_split_plugin_hub(hub_root, targets=("claude", "codex"))
     build_hub(hub_root)
     previous_release_root = tmp_path / "previous-release"
     shutil.copytree(hub_root, previous_release_root)
 
-    (hub_root / "packages/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:runbooks\n")
-    (hub_root / "packages/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:authoring-tools\n")
+    (hub_root / "plugins/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:runbooks\n")
+    (hub_root / "plugins/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:authoring-tools\n")
 
     assert resolve_publish_plugin_version(hub_root, previous_release_root=previous_release_root) == "0.1.1"
 
@@ -172,7 +170,7 @@ def test_publish_version_rejects_authoritative_release_manifest_tampering(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    _configure_split_package_hub(hub_root, targets=("claude", "codex"))
+    _configure_split_plugin_hub(hub_root, targets=("claude", "codex"))
     build_hub(hub_root)
     previous_release_root = tmp_path / "previous-release"
     shutil.copytree(hub_root, previous_release_root)
@@ -228,7 +226,7 @@ def test_publish_version_uses_config_when_previous_release_has_no_version_metada
 def test_publish_version_ignores_repo_context_inventory(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    _configure_split_package_hub(hub_root, targets=("claude", "codex"))
+    _configure_split_plugin_hub(hub_root, targets=("claude", "codex"))
     build_hub(hub_root)
     previous_release_root = tmp_path / "previous-release"
     shutil.copytree(hub_root, previous_release_root)

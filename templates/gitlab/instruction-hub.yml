@@ -49,7 +49,7 @@ instruction-hub-check:
         - hub.yaml
         - hub.repo-context.json
         - assets/**/*
-        - packages/**/*
+        - plugins/**/*
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
 instruction-hub-publish:

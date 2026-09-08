@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from promptless_instruction_hub.cli import main
+from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hub
+from promptless_instruction_hub.config import load_hub_config
+from promptless_instruction_hub.errors import InstructionHubError
+from promptless_instruction_hub.fs import write_yaml
+from promptless_instruction_hub.release.versions import resolve_publish_plugin_version
+
+from .helpers import FIXTURES
+
+
+def test_cli_init_uses_explicit_marketplace_identity(tmp_path: Path) -> None:
+    assert (
+        main(
+            [
+                "init",
+                "--hub",
+                str(tmp_path),
+                "--org",
+                "Acme, Inc.",
+                "--marketplace-id",
+                "acme-tools-marketplace",
+                "--marketplace-name",
+                "Acme Tools",
+            ]
+        )
+        == 0
+    )
+
+    config = load_hub_config(tmp_path)
+    assert config.marketplace.id == "acme-tools-marketplace"
+    assert config.marketplace.name == "Acme Tools"
+    assert config.stable_plugins == ["pig"]
+    assert (tmp_path / "plugins/pig.yaml").exists()
+    assert not (tmp_path / "packages").exists()
+
+
+def test_default_marketplace_identity_slugifies_org(tmp_path: Path) -> None:
+    init_hub(tmp_path, org="Acme, Inc.")
+    config = load_hub_config(tmp_path)
+    assert config.marketplace.id == "acme-inc-instruction-hub"
+    assert config.marketplace.name == "Acme, Inc. Instruction Hub"
+
+
+@pytest.mark.parametrize("marketplace_id", ["acme-tools", "acme-tools-marketplace"])
+def test_literal_ids_are_consistent_across_targets(tmp_path: Path, marketplace_id: str) -> None:
+    init_hub(tmp_path, org="Acme", marketplace_id=marketplace_id, marketplace_name="Acme Tools")
+    config = load_hub_config(tmp_path)
+    write_yaml(tmp_path / "hub.yaml", {**config.model_dump(), "stable_plugins": ["pig", "dev"]})
+    write_yaml(tmp_path / "plugins/dev.yaml", {"id": "dev", "name": "Developer Tools", "includes": []})
+    build_hub(tmp_path)
+
+    for target, marketplace_path in {
+        "claude": ".claude-plugin/marketplace.json",
+        "codex": ".agents/plugins/marketplace.json",
+        "cursor": ".cursor-plugin/marketplace.json",
+    }.items():
+        marketplace = json.loads((tmp_path / marketplace_path).read_text())
+        assert marketplace["name"] == marketplace_id
+        assert [plugin["name"] for plugin in marketplace["plugins"]] == ["pig", "dev"]
+        if target == "codex":
+            assert marketplace["interface"]["displayName"] == "Acme Tools"
+
+    for target, manifest_path in {
+        "claude": ".claude-plugin/plugin.json",
+        "codex": ".codex-plugin/plugin.json",
+        "cursor": ".cursor-plugin/plugin.json",
+        "gemini": "gemini-extension.json",
+    }.items():
+        manifest = json.loads((tmp_path / "dist" / target / "dev" / manifest_path).read_text())
+        assert manifest["name"] == "dev"
+        if target == "codex":
+            assert manifest["interface"]["displayName"] == "Developer Tools"
+        elif target in {"claude", "cursor"}:
+            assert manifest["displayName"] == "Developer Tools"
+
+    for target in ("claude", "codex"):
+        plugin_root = tmp_path / "dist" / target / "pig"
+        update_skill = (plugin_root / "skills/update-instruction-hub/SKILL.md").read_text()
+        assert f"generated marketplace name `{marketplace_id}`" in update_skill
+        runtimes = json.loads((plugin_root / "hub.managed-runtimes.json").read_text())
+        assert {runtime["plugin_id"] for runtime in runtimes["managed_runtimes"]} == {"pig"}
+
+
+@pytest.mark.parametrize("marketplace", [{"id": "Bad ID", "name": "Tools"}, {"id": "acme", "name": ""}])
+def test_invalid_marketplace_identity_is_rejected(tmp_path: Path, marketplace: dict[str, str]) -> None:
+    init_hub(tmp_path)
+    config = load_hub_config(tmp_path)
+    write_yaml(tmp_path / "hub.yaml", {**config.model_dump(), "marketplace": marketplace})
+    with pytest.raises(InstructionHubError, match="marketplace"):
+        validate_hub(tmp_path)
+
+
+@pytest.mark.parametrize("command", ["init", "validate", "verify", "build", "scan"])
+def test_legacy_config_requires_migration_without_writes(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+) -> None:
+    config_path = tmp_path / "hub.yaml"
+    original = "org: Acme\nplugin_id: acme-instruction-hub\nplugin_name: Acme\nplugin_version: 0.1.0\n"
+    config_path.write_text(original)
+    assert main([command, "--hub", str(tmp_path)]) == 1
+    assert "legacy hub configuration" in capsys.readouterr().err
+    assert config_path.read_text() == original
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["hub.yaml"]
+
+
+def test_legacy_directory_is_not_silently_ignored(tmp_path: Path) -> None:
+    init_hub(tmp_path)
+    (tmp_path / "plugins").rename(tmp_path / "packages")
+    with pytest.raises(InstructionHubError, match="legacy plugin directory"):
+        validate_hub(tmp_path)
+
+
+def test_duplicate_plugin_ids_are_rejected(tmp_path: Path) -> None:
+    init_hub(tmp_path)
+    (tmp_path / "plugins/duplicate.yaml").write_text("id: pig\nname: Another PIG\n")
+    with pytest.raises(InstructionHubError, match="duplicate plugin id: pig"):
+        validate_hub(tmp_path)
+
+
+def test_publish_accepts_release_from_before_identity_migration(tmp_path: Path) -> None:
+    init_hub(tmp_path, org="Acme", marketplace_id="acme-instruction-hub-marketplace")
+    config = load_hub_config(tmp_path)
+    write_yaml(tmp_path / "hub.yaml", {**config.model_dump(), "targets": ["cursor"]})
+    assert (
+        resolve_publish_plugin_version(
+            tmp_path,
+            previous_release_root=FIXTURES / "legacy-release",
+        )
+        == "0.1.8"
+    )

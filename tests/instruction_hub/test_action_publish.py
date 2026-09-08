@@ -12,7 +12,7 @@ from promptless_instruction_hub.compiler import build_hub
 
 from .helpers import (
     REPO_ROOT,
-    _configure_split_package_hub,
+    _configure_split_plugin_hub,
     _git,
     _git_output,
     _init_action_repo,
@@ -191,7 +191,7 @@ def test_action_publish_rejects_release_branch_equal_to_source_branch(tmp_path: 
 def test_action_publish_writes_release_branch_and_marketplace_pointers_for_stable_packages(tmp_path: Path) -> None:
     repo = _init_action_repo(tmp_path / "publish", targets=("claude", "codex", "cursor"))
     output_path = tmp_path / "github-output.txt"
-    _configure_split_package_hub(repo, ("claude", "codex", "cursor"))
+    _configure_split_plugin_hub(repo, ("claude", "codex", "cursor"))
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "split stable packages")
 
@@ -212,9 +212,9 @@ def test_action_publish_writes_release_branch_and_marketplace_pointers_for_stabl
 
     claude_pointer = json.loads((repo / ".claude-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in claude_pointer["plugins"]] == [
-        ("acme-instruction-hub-dev", "dist/claude/dev"),
-        ("acme-instruction-hub-ops", "dist/claude/ops"),
-        ("acme-instruction-hub-pig", "dist/claude/pig"),
+        ("dev", "dist/claude/dev"),
+        ("ops", "dist/claude/ops"),
+        ("pig", "dist/claude/pig"),
     ]
     assert all(plugin["source"]["source"] == "git-subdir" for plugin in claude_pointer["plugins"])
     assert all(
@@ -226,9 +226,9 @@ def test_action_publish_writes_release_branch_and_marketplace_pointers_for_stabl
 
     codex_pointer = json.loads((repo / ".agents/plugins/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in codex_pointer["plugins"]] == [
-        ("acme-instruction-hub-dev", "dist/codex/dev"),
-        ("acme-instruction-hub-ops", "dist/codex/ops"),
-        ("acme-instruction-hub-pig", "dist/codex/pig"),
+        ("dev", "dist/codex/dev"),
+        ("ops", "dist/codex/ops"),
+        ("pig", "dist/codex/pig"),
     ]
     assert all(plugin["source"]["source"] == "git-subdir" for plugin in codex_pointer["plugins"])
     assert all(
@@ -240,9 +240,9 @@ def test_action_publish_writes_release_branch_and_marketplace_pointers_for_stabl
 
     cursor_pointer = json.loads((repo / ".cursor-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in cursor_pointer["plugins"]] == [
-        ("acme-instruction-hub-dev", "dist/cursor/dev"),
-        ("acme-instruction-hub-ops", "dist/cursor/ops"),
-        ("acme-instruction-hub-pig", "dist/cursor/pig"),
+        ("dev", "dist/cursor/dev"),
+        ("ops", "dist/cursor/ops"),
+        ("pig", "dist/cursor/pig"),
     ]
     assert all(plugin["source"]["owner"] == "Promptless" for plugin in cursor_pointer["plugins"])
     assert all(plugin["source"]["repo"] == "instruction-hub-test" for plugin in cursor_pointer["plugins"])
@@ -297,7 +297,7 @@ def test_action_publish_cursor_pointer_preserves_non_github_repository_and_relea
 
 def test_action_publish_bumps_and_rewrites_outputs_when_package_id_changes(tmp_path: Path) -> None:
     repo = _init_action_repo(tmp_path / "publish-package-id-rename", targets=("claude", "codex", "cursor"))
-    _configure_split_package_hub(repo, ("claude", "codex", "cursor"))
+    _configure_split_plugin_hub(repo, ("claude", "codex", "cursor"))
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "split stable packages")
 
@@ -309,8 +309,8 @@ def test_action_publish_bumps_and_rewrites_outputs_when_package_id_changes(tmp_p
     }
 
     (repo / "hub.yaml").write_text((repo / "hub.yaml").read_text().replace("  - dev\n", "  - developer\n"))
-    (repo / "packages/dev.yaml").rename(repo / "packages/developer.yaml")
-    (repo / "packages/developer.yaml").write_text(
+    (repo / "plugins/dev.yaml").rename(repo / "plugins/developer.yaml")
+    (repo / "plugins/developer.yaml").write_text(
         "id: developer\nname: Developer\nincludes:\n  - skill:authoring-tools\n"
     )
     _git(repo, "add", "-A")
@@ -329,21 +329,21 @@ def test_action_publish_bumps_and_rewrites_outputs_when_package_id_changes(tmp_p
     assert not _release_branch_path_exists(repo, "dist/claude/dev/.claude-plugin/plugin.json")
     claude_pointer = json.loads((repo / ".claude-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in claude_pointer["plugins"]] == [
-        ("acme-instruction-hub-developer", "dist/claude/developer"),
-        ("acme-instruction-hub-ops", "dist/claude/ops"),
-        ("acme-instruction-hub-pig", "dist/claude/pig"),
+        ("developer", "dist/claude/developer"),
+        ("ops", "dist/claude/ops"),
+        ("pig", "dist/claude/pig"),
     ]
     codex_pointer = json.loads((repo / ".agents/plugins/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in codex_pointer["plugins"]] == [
-        ("acme-instruction-hub-developer", "dist/codex/developer"),
-        ("acme-instruction-hub-ops", "dist/codex/ops"),
-        ("acme-instruction-hub-pig", "dist/codex/pig"),
+        ("developer", "dist/codex/developer"),
+        ("ops", "dist/codex/ops"),
+        ("pig", "dist/codex/pig"),
     ]
     cursor_pointer = json.loads((repo / ".cursor-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in cursor_pointer["plugins"]] == [
-        ("acme-instruction-hub-developer", "dist/cursor/developer"),
-        ("acme-instruction-hub-ops", "dist/cursor/ops"),
-        ("acme-instruction-hub-pig", "dist/cursor/pig"),
+        ("developer", "dist/cursor/developer"),
+        ("ops", "dist/cursor/ops"),
+        ("pig", "dist/cursor/pig"),
     ]
 
 
@@ -553,7 +553,7 @@ def test_action_publish_second_run_is_noop(tmp_path: Path, server_url: str) -> N
 def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_path: Path, server_url: str) -> None:
     repo = _init_action_repo(tmp_path / "publish-version-bump", targets=("claude", "codex", "cursor", "gemini"))
     env = {"GITHUB_SERVER_URL": server_url}
-    (repo / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:review-docs\n")
+    (repo / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:review-docs\n")
     skill_root = repo / "assets/skills/review-docs"
     skill_root.mkdir(parents=True)
     (skill_root / "SKILL.md").write_text("# Review Docs\n")
