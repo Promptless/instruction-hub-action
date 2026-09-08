@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.fs import validate_json_value
 
@@ -32,6 +34,7 @@ from .helpers import (
 def test_bootstrap_preserves_unrelated_config_and_writes_backups(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -103,6 +106,7 @@ def test_bootstrap_preserves_unrelated_config_and_writes_backups(tmp_path: Path)
 def test_bootstrap_removes_managed_host_otel_config(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -216,6 +220,7 @@ def test_bootstrap_removes_managed_host_otel_config(tmp_path: Path) -> None:
 def test_bootstrap_blocks_malformed_managed_codex_config(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -279,6 +284,7 @@ def test_bootstrap_blocks_malformed_managed_codex_config(tmp_path: Path) -> None
 def test_bootstrap_leaves_unmanaged_host_config_untouched(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -333,6 +339,7 @@ def test_bootstrap_leaves_unmanaged_host_config_untouched(tmp_path: Path) -> Non
 def test_bootstrap_surfaces_enrollment_message_only_on_change(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -389,6 +396,7 @@ def test_bootstrap_surfaces_enrollment_message_only_on_change(tmp_path: Path) ->
 def test_bootstrap_writes_no_host_config_on_fresh_hosts(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -419,6 +427,7 @@ def test_bootstrap_stdout_stays_codex_schema_safe(tmp_path: Path) -> None:
     # only the user-facing systemMessage may, and stdout stays empty when there is no message.
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -465,6 +474,7 @@ def test_bootstrap_stdout_stays_codex_schema_safe(tmp_path: Path) -> None:
 def test_bootstrap_announces_plugin_update_per_host(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root, plugin_version="0.1.0")
     server = _FakeWorkerServer()
     server.start()
@@ -520,6 +530,7 @@ def test_bootstrap_announces_plugin_update_per_host(tmp_path: Path) -> None:
 def test_bootstrap_update_notice_tolerates_unreadable_state(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -553,6 +564,7 @@ def test_bootstrap_update_notice_tolerates_unreadable_state(tmp_path: Path) -> N
 def test_bootstrap_defers_recording_update_until_notice_surfaces(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root, plugin_version="0.1.0")
     server = _FakeWorkerServer()
     server.start()
@@ -605,6 +617,7 @@ def test_bootstrap_defers_recording_update_until_notice_surfaces(tmp_path: Path)
 def test_bootstrap_repeat_runs_stay_configured_without_config_writes(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -652,6 +665,7 @@ def test_bootstrap_repeat_runs_stay_configured_without_config_writes(tmp_path: P
 def test_bootstrap_rejects_invalid_worker_policy(tmp_path: Path, case: str) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     invalid_policy = _invalid_policy(case)
     invalid_policy["user_email"] = "Adit@GoPromptless.AI"
@@ -693,6 +707,7 @@ def test_bootstrap_rejects_invalid_worker_policy(tmp_path: Path, case: str) -> N
 def test_bootstrap_ignores_legacy_collector_policy_sections(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     # Hosted policies still carry the retired OTLP collector section for older
     # bootstraps; this runtime must tolerate any shape, including its absence.
@@ -723,6 +738,7 @@ def test_bootstrap_ignores_legacy_collector_policy_sections(tmp_path: Path) -> N
 def test_upload_only_policy_permissions_block_neither_ensure_nor_collect(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     # Hosted policies still carry the retired plugin_permissions section for older
@@ -767,6 +783,7 @@ def test_upload_only_policy_permissions_block_neither_ensure_nor_collect(tmp_pat
 def test_bootstrap_blocks_when_worker_requires_different_runtime_version(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(policy=_policy_with(required_bootstrap_version="0.3.0"))
     server.start()
@@ -796,6 +813,7 @@ def test_bootstrap_blocks_when_worker_requires_different_runtime_version(tmp_pat
 def test_bootstrap_rejects_invalid_check_in_success_response(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(post_response={"accepted": False, "policy_version": 1})
     server.start()

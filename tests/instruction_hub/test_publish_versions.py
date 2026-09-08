@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.release.versions import resolve_publish_plugin_version
 
@@ -71,6 +73,7 @@ def test_publish_version_prefers_higher_configured_version_floor(tmp_path: Path)
 def test_publish_version_accepts_legacy_managed_runtime_id_in_previous_release(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Acme")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     previous_release_root = tmp_path / "previous-release"
     shutil.copytree(hub_root, previous_release_root)

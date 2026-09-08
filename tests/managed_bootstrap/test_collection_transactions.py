@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.managed_runtime_assets.host_enrollment.promptless_host_runtime.contracts import (
     CHUNK_TARGET_BYTES,
@@ -114,6 +116,7 @@ def test_current_transcript_ack_is_persisted_before_idle_discovery(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -167,6 +170,7 @@ def test_current_transcript_ack_is_persisted_before_idle_discovery(
 def test_first_current_transcript_lock_timeout_reports_partial(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()

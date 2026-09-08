@@ -17,7 +17,13 @@ from promptless_instruction_hub.config import (
 )
 from promptless_instruction_hub.errors import BuildCheckFailedError
 from promptless_instruction_hub.fs import JsonValue, replace_tree, trees_equal, write_yaml
-from promptless_instruction_hub.models import PIG_PLUGIN_ID, PIG_PLUGIN_NAME, HubConfig, MarketplaceDefinition
+from promptless_instruction_hub.models import (
+    PIG_PLUGIN_ID,
+    PIG_PLUGIN_NAME,
+    HubConfig,
+    MarketplaceDefinition,
+    TraceIngestionConfig,
+)
 from promptless_instruction_hub.release.manifests import build_release_manifest, write_release_files
 from promptless_instruction_hub.render.plugins import embed_release_manifest, render_target_plugins
 from promptless_instruction_hub.validate.hub import ValidationResult, validate_hub
@@ -84,6 +90,7 @@ def init_hub(
             name=marketplace_name if marketplace_name is not None else f"{org} Instruction Hub",
         ),
         plugin_version=plugin_version,
+        trace_ingestion=TraceIngestionConfig(enabled=False),
     )
     _write_file_if_missing(root / CONFIG_PATH, config.model_dump())
     _write_file_if_missing(

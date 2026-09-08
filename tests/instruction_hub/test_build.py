@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hub, verify_hub
 from promptless_instruction_hub.errors import BuildCheckFailedError, InstructionHubError
 from promptless_instruction_hub.scan.hub import scan_hub
@@ -22,6 +24,7 @@ from .helpers import (
 def test_build_emits_target_outputs_and_deterministic_manifests(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     scan_hub(hub_root, FIXTURES / "dogfood-source")
 
     first = build_hub(hub_root)
@@ -159,6 +162,7 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
     (hub_root / "assets/skills/runbooks").mkdir(parents=True)
     (hub_root / "assets/skills/runbooks/SKILL.md").write_text("# Runbooks\n")
 
+    enable_trace_ingestion(hub_root)
     validation = validate_hub(hub_root)
     build_hub(hub_root)
 

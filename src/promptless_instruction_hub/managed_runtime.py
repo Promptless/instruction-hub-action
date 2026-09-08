@@ -120,7 +120,7 @@ def render_managed_runtimes(
 ) -> tuple[ManagedRuntimeRecord, ...]:
     """Inject managed runtime artifacts when rendering the PIG plugin for a supported host."""
 
-    if plugin.id != PIG_PLUGIN_ID or target not in SUPPORTED_HOST_RUNTIME_TARGETS:
+    if not config.trace_ingestion.enabled or plugin.id != PIG_PLUGIN_ID or target not in SUPPORTED_HOST_RUNTIME_TARGETS:
         return ()
 
     _copy_runtime_bundle(target_root)

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.cli import main
 from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hub
 from promptless_instruction_hub.config import load_hub_config
@@ -51,6 +53,7 @@ def test_default_marketplace_identity_slugifies_org(tmp_path: Path) -> None:
 @pytest.mark.parametrize("marketplace_id", ["acme-tools", "acme-tools-marketplace"])
 def test_literal_ids_are_consistent_across_targets(tmp_path: Path, marketplace_id: str) -> None:
     init_hub(tmp_path, org="Acme", marketplace_id=marketplace_id, marketplace_name="Acme Tools")
+    enable_trace_ingestion(tmp_path)
     config = load_hub_config(tmp_path)
     write_yaml(tmp_path / "hub.yaml", {**config.model_dump(), "stable_plugins": ["pig", "dev"]})
     write_yaml(tmp_path / "plugins/dev.yaml", {"id": "dev", "name": "Developer Tools", "includes": []})

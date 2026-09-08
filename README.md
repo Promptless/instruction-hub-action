@@ -96,19 +96,17 @@ If your source branch is not `main`, update `push.branches`, the job's `if`, and
 `source-branch` together. For a hub in a subdirectory, set `hub-root` in both
 callers.
 
-Use `@main` to follow the latest merged toolchain. Replace `@main` in both
-workflow references with the same full commit SHA to pin the workflows and
-compiler. Each reusable workflow checks out the compiler using the ref in its
+Use `@main` in both workflow references to follow the latest merged toolchain.
+Each reusable workflow checks out the compiler using the ref in its
 caller's `uses`; there is no separate `toolchain-ref` input on GitHub.
 
 ### GitLab CI
 
-For a hub at the repository root, add this to `.gitlab-ci.yml`, replacing
-`<template-commit-sha>` with a full toolchain commit containing the template:
+For a hub at the repository root, add this to `.gitlab-ci.yml`:
 
 ```yaml
 include:
-  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/<template-commit-sha>/templates/gitlab/instruction-hub.yml
+  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/main/templates/gitlab/instruction-hub.yml
 ```
 
 The [template](templates/gitlab/instruction-hub.yml) validates and builds hub
@@ -129,7 +127,7 @@ optional and go under the remote include's `inputs`:
 
 | Input | Default | Purpose |
 | --- | --- | --- |
-| `toolchain-ref` | `main` | Compiler revision: `main` or a full commit SHA. |
+| `toolchain-ref` | `main` | Leave as `main` to use the latest merged compiler. |
 | `release-branch` | `release/stable` | Branch that receives generated artifacts; must differ from the default branch. |
 | `check-stage` | `test` | Existing pipeline stage for validation. |
 | `publish-stage` | `deploy` | Existing pipeline stage for publishing. |
@@ -139,7 +137,7 @@ For a pipeline with custom stages, use `include:inputs`:
 ```yaml
 stages: [verify, publish]
 include:
-  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/<template-commit-sha>/templates/gitlab/instruction-hub.yml
+  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/main/templates/gitlab/instruction-hub.yml
     inputs:
       check-stage: verify
       publish-stage: publish
@@ -147,9 +145,8 @@ include:
 ```
 
 The compiler defaults to `main`: each job fetches the latest merged toolchain
-when it starts and logs the resolved commit. Set the optional `toolchain-ref`
-input to a full commit SHA for a fixed compiler revision, independently of the
-template revision. The template runs the same `scripts/run.sh` entrypoint as the
+when it starts and logs the resolved commit for diagnostics. Keep both the
+remote template URL and `toolchain-ref` on `main`. The template runs the same `scripts/run.sh` entrypoint as the
 GitHub Action, with GitLab workspace, repository, identity, and branch checks
 supplied by the template.
 
@@ -179,7 +176,7 @@ jobs:
 
 Keep `fetch-depth: 0` for publication and pass the token as shown when checkout
 credentials are not persisted. Use `@main` for the latest merged action and
-compiler, or replace it with a full commit SHA to pin both.
+compiler.
 
 The action runs the bundled compiler directly:
 
@@ -313,7 +310,7 @@ through the team's GitLab-capable importer before relying on Cursor delivery.
 
 Every hub must keep the canonical `pig` plugin in `stable_plugins`. `pig init`
 scaffolds that plugin as the home for scanned shared instructions and the
-Promptless-managed lifecycle integration. Other customer instruction plugins
+optional Promptless-managed lifecycle integration. Other customer instruction plugins
 do not receive managed hooks or runtime files.
 
 ## Hub File Layout
@@ -340,10 +337,9 @@ their config to `hub.yaml` and regenerate output with `pig build`.
 
 ## Release Model
 
-The GitHub examples above use `@main` to follow the latest merged toolchain.
-The composite action is also available through the moving `v0` tag. Use a full
-commit SHA for a fixed revision. GitLab's template revision and compiler revision
-are configured independently, as described under [GitLab CI](#gitlab-ci).
+Hubs follow the latest merged toolchain on `main`. GitHub callers use `@main`;
+GitLab callers use the `/main/` template URL and the default `toolchain-ref: main`.
+Resolved commit hashes in CI logs identify the compiler used for a build.
 
 ## Managed PIG Assets
 
@@ -356,9 +352,35 @@ skill refresh host operations, stopping if those current-session actions are
 unavailable; Claude updates each installed plugin at its original scope and uses
 `/reload-plugins` to apply the changes without restarting.
 
+### Trace ingestion
+
+Instruction Hubs can publish and install instructions without an ingestion worker.
+New hubs created by `pig init` explicitly disable managed trace ingestion in `hub.yaml`:
+
+```yaml
+trace_ingestion:
+  enabled: false
+```
+
+With ingestion disabled, the toolchain emits no managed enrollment hooks, runtime
+bundle, or managed-runtime metadata. Authored skills, agents, rules, commands,
+hooks, MCP configuration, and the Claude/Codex update skill remain available.
+Verification and publishing do not require worker credentials or worker access.
+
+During the compatibility rollout, existing configurations that omit this field
+retain ingestion. Existing hubs that use ingestion must set `enabled: true`
+before the follow-up release changes the omitted-field default to `false`.
+Enabling ingestion bundles the existing Claude/Codex host runtime; it does not
+provision a worker. Cursor and Gemini do not receive that managed runtime.
+
+After changing this setting, publish the hub and refresh its installed plugins.
+Disabling it removes managed hooks from the new release; an older installed
+plugin keeps its hooks until refreshed. It does not delete previously ingested
+data or change a worker deployment.
+
 ### Managed Host Runtime
 
-The toolchain owns Promptless-managed runtime artifacts that are injected into
+When `trace_ingestion.enabled` is true, the toolchain owns Promptless-managed runtime artifacts that are injected into
 the canonical `pig` plugin, including the host runtime used by Codex and
 Claude lifecycle hooks. Other generated plugins receive no toolchain-managed
 runtime or lifecycle hooks. During dogfood, generated Codex hooks wrap the bundled

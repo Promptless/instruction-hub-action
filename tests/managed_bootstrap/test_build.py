@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.fs import JsonValue, validate_json_value
@@ -52,6 +54,7 @@ from .helpers import (
 def test_build_injects_managed_bootstrap_runtime(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
 
     build_hub(hub_root)
 
@@ -919,6 +922,7 @@ def test_build_injects_managed_bootstrap_runtime(tmp_path: Path) -> None:
 def test_host_runtime_bundle_digest_tracks_runtime_files_only(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     bin_root = plugin_root / "runtime"
@@ -950,6 +954,7 @@ def test_host_runtime_bundle_digest_tracks_runtime_files_only(tmp_path: Path) ->
 def test_build_appends_bootstrap_hook_to_existing_hook_asset(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     _write_native_hook_asset(
         hub_root,
         {
@@ -975,6 +980,7 @@ def test_build_appends_bootstrap_hook_to_existing_hook_asset(tmp_path: Path) -> 
 def test_build_leaves_customer_package_hook_unmanaged(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     _write_native_hook_asset(
         hub_root,
         {
@@ -1006,6 +1012,7 @@ def test_build_leaves_customer_package_hook_unmanaged(tmp_path: Path) -> None:
 def test_build_rejects_malformed_existing_hook_asset(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     _write_native_hook_asset(hub_root, {"hooks": []})
 
     with pytest.raises(InstructionHubError, match="field hooks must be a JSON object"):

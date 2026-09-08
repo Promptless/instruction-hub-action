@@ -28,6 +28,8 @@ def write_manifest(
     if plugin.id == PIG_PLUGIN_ID:
         long_description = description
         default_prompt = "Use PIG instructions and lifecycle integration for this session."
+        if not config.trace_ingestion.enabled:
+            default_prompt = "Use Instruction Hub guidance for this session."
     else:
         long_description = f"{plugin.name} distributes governed agent instructions for {config.org}."
         default_prompt = f"Use {plugin.name} instructions for this task."
