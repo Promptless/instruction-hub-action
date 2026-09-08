@@ -476,6 +476,7 @@ prepare_marketplace_pointer() {
   mkdir -p "$(dirname "$prepared_path")"
   python - "$platform" "$marketplace_path" "$prepared_path" "$repository_url" "$release_branch" "$hub_rel" "$GITHUB_REPOSITORY" <<'PY'
 from pathlib import Path
+from urllib.parse import urlsplit
 import json
 import sys
 
@@ -515,7 +516,7 @@ def plugin_local_path(plugin: dict[str, object]) -> str:
     return normalize_local_path(path)
 
 
-def cursor_source(path: str) -> dict[str, str]:
+def github_cursor_source(path: str) -> dict[str, str]:
     owner, separator, repo = github_repository.partition("/")
     if separator != "/" or not owner or not repo:
         fail(f"GITHUB_REPOSITORY must be owner/repo, got: {github_repository}")
@@ -535,8 +536,8 @@ for plugin in plugins:
     if not isinstance(plugin, dict):
         fail("Expected marketplace plugins to be objects.")
     path = plugin_local_path(plugin)
-    if platform == "cursor":
-        plugin["source"] = cursor_source(path)
+    if platform == "cursor" and urlsplit(repository_url).hostname == "github.com":
+        plugin["source"] = github_cursor_source(path)
     else:
         plugin["source"] = {
             "source": "git-subdir",
