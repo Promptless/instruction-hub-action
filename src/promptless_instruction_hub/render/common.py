@@ -24,6 +24,8 @@ def plugin_description(config: HubConfig, plugin: PluginDefinition) -> str:
     """Return the stable user-facing plugin description."""
 
     if plugin.id == PIG_PLUGIN_ID:
+        if not config.trace_ingestion.enabled:
+            return f"Instruction Hub guidance and updates for {config.org}."
         return f"Promptless Instruction Governance instructions and lifecycle integration for {config.org}."
     return f"Governed agent instructions for {config.org}: {plugin.name}."
 

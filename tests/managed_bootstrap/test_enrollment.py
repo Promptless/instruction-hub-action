@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.fs import validate_json_value
 from promptless_instruction_hub.managed_runtime_assets.host_enrollment.promptless_host_runtime import (
@@ -47,6 +49,7 @@ from .helpers import (
 def test_bootstrap_unreachable_worker_exits_zero_without_config_write(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     home = tmp_path / "home"
 
@@ -97,6 +100,7 @@ def test_bootstrap_unreachable_worker_exits_zero_without_config_write(tmp_path: 
 def test_bootstrap_runs_without_local_dogfood_gate(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -138,6 +142,7 @@ def test_bootstrap_welcomes_is_internal_promptless_user_once_per_plugin_version(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root, plugin_version="0.1.0")
     internal_policy = _policy_with()
     if identity_location == "envelope":
@@ -254,6 +259,7 @@ def test_bootstrap_ignores_non_internal_worker_identity(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     policy = _policy_with()
     if identity_location == "envelope":
@@ -295,6 +301,7 @@ def test_bootstrap_ignores_non_internal_worker_identity(
 def test_cached_credential_trusts_only_persisted_internal_flag(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -341,6 +348,7 @@ def test_cached_credential_trusts_only_persisted_internal_flag(tmp_path: Path) -
 def test_bootstrap_welcomes_is_internal_promptless_user_from_poll_response(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(poll_response=_approved_poll_response(user_email="Adit@GoPromptless.AI"))
     server.start()
@@ -375,6 +383,7 @@ def test_bootstrap_welcomes_is_internal_promptless_user_from_poll_response(tmp_p
 def test_bootstrap_confirms_first_successful_enrollment_once_per_host(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -446,6 +455,7 @@ def test_bootstrap_confirms_first_successful_enrollment_once_per_host(tmp_path: 
 def test_session_start_supervisor_records_status_without_consuming_user_notices(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -504,6 +514,7 @@ def test_session_start_supervisor_records_status_without_consuming_user_notices(
 def test_reset_clears_first_successful_enrollment_latch(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -538,6 +549,7 @@ def test_reset_clears_first_successful_enrollment_latch(tmp_path: Path) -> None:
 def test_bootstrap_surfaces_browser_open_failure(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -609,6 +621,7 @@ def test_linux_browser_session_detection_accepts_graphical_or_wsl_session(displa
 def test_bootstrap_persists_host_global_state_file(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -643,6 +656,7 @@ def test_bootstrap_persists_host_global_state_file(tmp_path: Path) -> None:
 def test_bootstrap_concurrent_hosts_preserve_shared_state_file(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(session_barrier_count=2)
     server.start()
@@ -704,6 +718,7 @@ def test_bootstrap_concurrent_hosts_preserve_shared_state_file(tmp_path: Path) -
 def test_bootstrap_concurrent_pig_versions_enroll_once(tmp_path: Path, older_plugin_id: str) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -769,6 +784,7 @@ def test_bootstrap_concurrent_pig_versions_enroll_once(tmp_path: Path, older_plu
 def test_bootstrap_rejects_plaintext_non_loopback_worker_base_url(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     home = tmp_path / "home"
 
@@ -794,6 +810,7 @@ def test_bootstrap_rejects_plaintext_non_loopback_worker_base_url(tmp_path: Path
 def test_bootstrap_reports_browser_launch_failure_without_claiming_browser_opened(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -843,6 +860,7 @@ def test_bootstrap_reports_browser_launch_failure_without_claiming_browser_opene
 def test_bootstrap_configures_codex_and_claude_and_reports_metadata(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer()
     server.start()
@@ -940,6 +958,7 @@ def test_bootstrap_configures_codex_and_claude_and_reports_metadata(tmp_path: Pa
 def test_bootstrap_rejects_loopback_callback_with_wrong_state(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(callback_state_override="attacker-state")
     server.start()
@@ -981,6 +1000,7 @@ def test_bootstrap_rejects_pending_callback_approval_url_outside_dashboard_route
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(
         pending_approval_url_override=pending_approval_url_override,
@@ -1013,6 +1033,7 @@ def test_bootstrap_rejects_pending_callback_approval_url_outside_dashboard_route
 def test_bootstrap_fails_fast_when_browser_pending_callback_rejects_approval_url(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(pending_approval_url_override="https://attacker.example/instruction-hub/enroll")
     server.start()
@@ -1049,6 +1070,7 @@ def test_bootstrap_fails_fast_when_browser_pending_callback_rejects_approval_url
 def test_bootstrap_requires_callback_deployment_instance_id(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     server = _FakeWorkerServer(
         session_response={
@@ -1085,6 +1107,7 @@ def test_bootstrap_requires_callback_deployment_instance_id(tmp_path: Path) -> N
 def test_bootstrap_missing_managed_runtime_manifest_uses_default_metadata(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     (plugin_root / "hub.managed-runtimes.json").unlink()

@@ -132,6 +132,8 @@ def _installed_version(python: Path, cwd: Path) -> str:
 def _build_hub(toolchain: Sequence[os.PathLike[str] | str], workspace: Path) -> Path:
     hub_root = workspace / "hub"
     _run([*toolchain, "init", "--hub", hub_root, "--org", "Artifact Smoke"], cwd=workspace)
+    config_path = hub_root / "hub.yaml"
+    config_path.write_text(config_path.read_text().replace("enabled: false", "enabled: true"))
     _run([*toolchain, "build", "--hub", hub_root], cwd=workspace)
     plugin_root = hub_root / "dist" / "codex" / "pig"
     if not plugin_root.is_dir():

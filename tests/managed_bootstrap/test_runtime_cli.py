@@ -9,6 +9,8 @@ from typing import BinaryIO
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.fs import validate_json_value
 from promptless_instruction_hub.managed_runtime_assets.host_enrollment.promptless_host_runtime import (
@@ -40,6 +42,7 @@ from .helpers import (
 def test_host_runtime_requires_subcommand_and_reports_version(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     runtime_path = plugin_root / "runtime" / HOST_RUNTIME_BIN
@@ -245,6 +248,7 @@ def test_detached_session_start_only_spawns_supervisor_and_preserves_stdin(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root, plugin_version="1.2.3")
     plugin_root = hub_root / "dist/codex/pig"
     transcript_path = tmp_path / "session.jsonl"
@@ -286,6 +290,7 @@ def test_session_start_launcher_emits_and_claims_local_notices_once(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root, plugin_version="0.2.0")
     plugin_root = hub_root / "dist/codex/pig"
     home = tmp_path / "home"
@@ -386,6 +391,7 @@ def test_session_start_supervisor_records_ensure_failure(
 def test_host_runtime_enroll_status_and_reset_commands(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()

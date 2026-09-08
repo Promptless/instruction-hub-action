@@ -1,7 +1,7 @@
 spec:
   inputs:
     toolchain-ref:
-      description: Use main for the latest merged toolchain, or pin a full commit SHA.
+      description: Use main for the latest merged toolchain.
       default: main
       regex: '^(main|[0-9a-f]{40})$'
     release-branch:

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.fs import validate_json_value
 from promptless_instruction_hub.managed_runtime_assets.host_enrollment.promptless_host_runtime.contracts import (
@@ -49,6 +51,7 @@ def _seed_ledger_offsets(ledger_path: Path, *source_paths: Path) -> None:
 def test_collect_uploads_full_transcript_then_only_new_ranges(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -139,6 +142,7 @@ def test_collect_uploads_full_transcript_then_only_new_ranges(tmp_path: Path) ->
 def test_collect_with_no_sources_does_not_create_ledger(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -171,6 +175,7 @@ def test_collect_with_no_sources_does_not_create_ledger(tmp_path: Path) -> None:
 def test_collect_ignores_codex_jsonl_outside_native_trace_roots(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -207,6 +212,7 @@ def test_collect_ignores_codex_jsonl_outside_native_trace_roots(tmp_path: Path) 
 def test_collect_resumes_from_existing_ledger_offset(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -267,6 +273,7 @@ def test_collect_resumes_from_existing_ledger_offset(tmp_path: Path) -> None:
 def test_collect_uploads_new_ledger_sources_from_start(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -352,6 +359,7 @@ def test_collect_uploads_new_ledger_sources_from_start(tmp_path: Path) -> None:
 def test_collect_recovers_when_worker_committed_an_upload_without_acknowledging_it(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer(enforce_trace_watermarks=True, drop_next_trace_response_after_commit=True)
@@ -414,6 +422,7 @@ def test_collect_recovers_when_worker_committed_an_upload_without_acknowledging_
 def test_collect_include_active_uploads_recent_root_source_without_lifecycle(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -468,6 +477,7 @@ def test_collect_include_active_uploads_recent_root_source_without_lifecycle(tmp
 def test_collect_uploads_subagent_transcript_with_parent_identity(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -519,6 +529,7 @@ def test_collect_uploads_subagent_transcript_with_parent_identity(tmp_path: Path
 def test_collect_uploads_current_transcript_before_idle_history(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -586,6 +597,7 @@ def test_collect_uploads_current_transcript_before_idle_history(tmp_path: Path) 
 def test_collect_reports_oversized_record_with_content_size_reason(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -639,6 +651,7 @@ def test_collect_reports_oversized_record_with_content_size_reason(tmp_path: Pat
 def test_collect_reports_oversized_record_with_transport_size_reason(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -701,6 +714,7 @@ def test_collect_reports_oversized_record_with_transport_size_reason(tmp_path: P
 def test_collect_splits_batches_by_transport_size(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -757,6 +771,7 @@ def test_collect_splits_batches_by_transport_size(tmp_path: Path) -> None:
 def test_collect_keeps_ordinary_requests_under_transport_target(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -808,6 +823,7 @@ def test_collect_keeps_ordinary_requests_under_transport_target(tmp_path: Path) 
 def test_collect_skips_unreadable_idle_source_and_uploads_the_rest(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -880,6 +896,7 @@ def test_collect_skips_unreadable_idle_source_and_uploads_the_rest(tmp_path: Pat
 def test_collect_tolerates_unparsed_record_counts_and_advances_ledger(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     # The worker models undecodable ledger lines as informational counts; a nonzero
@@ -927,6 +944,7 @@ def test_collect_waits_for_ledger_lock_before_uploading_current_transcript(tmp_p
 
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -982,6 +1000,7 @@ def test_collect_waits_for_ledger_lock_before_uploading_current_transcript(tmp_p
 def test_zero_catch_up_deadline_still_uploads_current_transcript(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -1035,6 +1054,7 @@ def test_zero_catch_up_deadline_still_uploads_current_transcript(tmp_path: Path)
 def test_deadline_truncation_keeps_acked_progress_and_resumes(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -1161,6 +1181,7 @@ def test_deadline_truncation_keeps_acked_progress_and_resumes(tmp_path: Path) ->
 def test_zero_deadline_without_current_transcript_defers_idle_history(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()

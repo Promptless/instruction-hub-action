@@ -86,6 +86,15 @@ class MarketplaceDefinition(BaseModel):
         return validate_identifier(value, "marketplace.id")
 
 
+class TraceIngestionConfig(BaseModel):
+    """Control whether plugins include the managed trace-ingestion runtime."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Preserve existing hubs until they explicitly opt in during the rollout.
+    enabled: bool = Field(default=True, strict=True)
+
+
 class HubConfig(BaseModel):
     """Root `hub.yaml` configuration."""
 
@@ -96,6 +105,7 @@ class HubConfig(BaseModel):
     plugin_version: str
     stable_plugins: list[str] = Field(default_factory=lambda: [PIG_PLUGIN_ID], min_length=1)
     targets: list[Harness] = Field(default_factory=lambda: list(SUPPORTED_HARNESSES), min_length=1)
+    trace_ingestion: TraceIngestionConfig = Field(default_factory=TraceIngestionConfig)
 
     @field_validator("plugin_version")
     @classmethod

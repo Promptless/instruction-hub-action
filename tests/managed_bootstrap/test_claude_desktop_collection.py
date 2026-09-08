@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.config_helpers import enable_trace_ingestion
+
 from promptless_instruction_hub.compiler import build_hub, init_hub
 from promptless_instruction_hub.fs import validate_json_value
 
@@ -52,6 +54,7 @@ def _seed_ledger_offsets(ledger_path: Path, *source_paths: Path) -> None:
 def test_claude_desktop_discovers_both_audit_stores_under_platform_config_root(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -114,6 +117,7 @@ def test_claude_desktop_discovers_both_audit_stores_under_platform_config_root(t
 def test_claude_uploads_current_transcript_before_idle_history(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -177,6 +181,7 @@ def test_claude_uploads_current_transcript_before_idle_history(tmp_path: Path) -
 def test_claude_desktop_ensure_if_sources_skips_without_audit_files(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -219,6 +224,7 @@ def test_claude_desktop_ensure_if_sources_skips_without_audit_files(tmp_path: Pa
 def test_claude_desktop_ensure_uses_shared_claude_enrollment_and_policy(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -269,6 +275,7 @@ def test_claude_reset_clears_shared_and_legacy_desktop_enrollment_state(
 ) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -323,6 +330,7 @@ def test_claude_reset_clears_shared_and_legacy_desktop_enrollment_state(
 def test_claude_desktop_collect_skips_without_cached_credential(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -354,6 +362,7 @@ def test_claude_desktop_collect_skips_without_cached_credential(tmp_path: Path) 
 def test_claude_desktop_collect_uploads_audit_jsonl_ranges(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -412,6 +421,7 @@ def test_claude_desktop_collect_uploads_audit_jsonl_ranges(tmp_path: Path) -> No
 def test_claude_and_desktop_collections_share_one_offset_ledger(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -481,6 +491,7 @@ def test_concurrent_claude_collections_wait_for_shared_ledger_lock(tmp_path: Pat
 
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -557,6 +568,7 @@ def test_concurrent_claude_collections_wait_for_shared_ledger_lock(tmp_path: Pat
 def test_claude_session_start_supervisor_collects_code_and_desktop(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/claude/pig"
     server = _FakeWorkerServer(policy=_signed_policy(enabled_hosts=["codex", "claude"]))
@@ -620,6 +632,7 @@ def test_claude_session_start_supervisor_collects_code_and_desktop(tmp_path: Pat
 def test_removed_baseline_flags_are_rejected(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
@@ -660,6 +673,7 @@ def test_idle_collect_stops_waiting_for_ledger_lock_at_deadline(tmp_path: Path) 
 
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
+    enable_trace_ingestion(hub_root)
     build_hub(hub_root)
     plugin_root = hub_root / "dist/codex/pig"
     server = _FakeWorkerServer()
