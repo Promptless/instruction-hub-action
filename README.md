@@ -81,11 +81,12 @@ include:
       release-branch: release/stable
 ```
 
-Each template revision pins the compiler to a full commit SHA. The optional
-`toolchain-ref` input overrides that compiler SHA independently of the template
-revision. The template fetches that public revision and runs the same
-`scripts/run.sh` entrypoint as the GitHub Action, with GitLab workspace,
-repository, identity, and branch checks supplied by the template.
+The compiler defaults to `main`: each job fetches the latest merged toolchain
+when it starts and logs the resolved commit. Set the optional `toolchain-ref`
+input to a full commit SHA for a fixed compiler revision, independently of the
+template revision. The template runs the same `scripts/run.sh` entrypoint as the
+GitHub Action, with GitLab workspace, repository, identity, and branch checks
+supplied by the template.
 
 Before publishing a source change, run the full non-mutating compilation:
 

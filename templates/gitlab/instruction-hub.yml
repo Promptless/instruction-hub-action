@@ -1,9 +1,9 @@
 spec:
   inputs:
     toolchain-ref:
-      description: Full toolchain commit SHA to execute.
-      default: "6cdf886cb14d40d4309f35016fbbbca0dd8e7588"
-      regex: '^[0-9a-f]{40}$'
+      description: Use main for the latest merged toolchain, or pin a full commit SHA.
+      default: main
+      regex: '^(main|[0-9a-f]{40})$'
     release-branch:
       description: Branch that receives generated hub artifacts.
       default: release/stable
@@ -28,7 +28,7 @@ spec:
     - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" remote add origin https://github.com/Promptless/instruction-hub-toolchain.git
     - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" fetch --quiet --depth 1 origin "$INSTRUCTION_HUB_TOOLCHAIN_REF"
     - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" checkout --quiet --detach FETCH_HEAD
-    - test "$(git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" rev-parse HEAD)" = "$INSTRUCTION_HUB_TOOLCHAIN_REF"
+    - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" log -1 --format='Toolchain commit %H'
 
 instruction-hub-check:
   extends: .instruction-hub
