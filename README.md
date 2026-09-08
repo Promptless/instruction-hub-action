@@ -14,35 +14,92 @@ pig.
 # Promptless Instruction Hub Toolchain
 
 This repository is the canonical public toolchain for Promptless Instruction
-Hub repositories. It bundles the Python compiler and exposes a composite GitHub
-Action and a GitLab CI template for validating, building, and publishing generated
-hub artifacts.
+Hub repositories. It bundles the Python compiler and exposes reusable GitHub
+workflows, a GitLab CI template, and a composite GitHub Action for validating,
+building, and publishing generated hub artifacts.
 
 ## Usage
 
+Use the [GitHub workflows](#github-actions) or [GitLab template](#gitlab-ci) to
+keep toolchain setup in this repository. For custom GitHub jobs, see
+[direct action usage](#direct-action-usage).
+
+### GitHub Actions
+
+Add these two caller files to your hub repository. They use GitHub's
+[reusable workflow syntax](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows),
+with `uses` on the job. The shared workflows handle checkout and toolchain setup.
+
+`.github/workflows/instruction-hub-check.yml`:
+
 ```yaml
+name: Check Instruction Hub
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   instruction-hub:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: Promptless/instruction-hub-toolchain@v0
-        with:
-          mode: publish
-          source-branch: main
-          github-token: ${{ github.token }}
+    uses: Promptless/instruction-hub-toolchain/.github/workflows/pr-check.yml@main
 ```
 
-The action runs the bundled compiler directly:
+`.github/workflows/instruction-hub-publish.yml`:
 
-```bash
-uv run --project "$GITHUB_ACTION_PATH" promptless-instruction-hub <command>
+```yaml
+name: Publish Instruction Hub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instruction-hub-release
+  cancel-in-progress: false
+
+jobs:
+  instruction-hub:
+    if: github.ref == 'refs/heads/main'
+    uses: Promptless/instruction-hub-toolchain/.github/workflows/publish.yml@main
+    with:
+      source-branch: main
 ```
+
+The [check workflow](.github/workflows/pr-check.yml) validates and builds the hub
+without committing generated files. The [publish workflow](.github/workflows/publish.yml)
+publishes generated artifacts to `release/stable` and updates marketplace
+pointers on the source branch for the configured Claude, Codex, and Cursor targets.
+The caller above runs publication on pushes to `main` or manual runs on `main`,
+and its concurrency group prevents overlapping publish runs.
+
+Publishing uses the caller repository's automatic `GITHUB_TOKEN`; no additional
+secret is required. Grant `contents: write` as shown and ensure repository rules
+allow that token to push to both the source and release branches.
+
+All workflow inputs are optional. Set them under the calling job's `with`:
+
+| Input | Workflow | Default | Purpose |
+| --- | --- | --- | --- |
+| `hub-root` | Both | `.` | Hub directory within the checked-out repository. |
+| `mode` | Check | `build` | Use `check` only when generated artifacts are committed alongside source. |
+| `source-branch` | Publish | `main` | Branch allowed to publish and receive marketplace pointer updates. |
+| `release-branch` | Publish | `release/stable` | Branch that receives generated artifacts; must differ from `source-branch`. |
+
+If your source branch is not `main`, update `push.branches`, the job's `if`, and
+`source-branch` together. For a hub in a subdirectory, set `hub-root` in both
+callers.
+
+Use `@main` to follow the latest merged toolchain. Replace `@main` in both
+workflow references with the same full commit SHA to pin the workflows and
+compiler. Each reusable workflow checks out the compiler using the ref in its
+caller's `uses`; there is no separate `toolchain-ref` input on GitHub.
 
 ### GitLab CI
 
@@ -67,9 +124,17 @@ project. The user starting the pipeline must be allowed to push to the default
 and release branches. Publishing uses `CI_JOB_TOKEN`; its pushes do not trigger
 another pipeline. No GitHub token is needed.
 
-The template uses the default GitLab `test` and `deploy` stages and scopes its
-image and variables to its own jobs. For a pipeline with custom stages, use
-`include:inputs`:
+The template scopes its image and variables to its own jobs. All inputs are
+optional and go under the remote include's `inputs`:
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `toolchain-ref` | `main` | Compiler revision: `main` or a full commit SHA. |
+| `release-branch` | `release/stable` | Branch that receives generated artifacts; must differ from the default branch. |
+| `check-stage` | `test` | Existing pipeline stage for validation. |
+| `publish-stage` | `deploy` | Existing pipeline stage for publishing. |
+
+For a pipeline with custom stages, use `include:inputs`:
 
 ```yaml
 stages: [verify, publish]
@@ -87,6 +152,42 @@ input to a full commit SHA for a fixed compiler revision, independently of the
 template revision. The template runs the same `scripts/run.sh` entrypoint as the
 GitHub Action, with GitLab workspace, repository, identity, and branch checks
 supplied by the template.
+
+### Direct action usage
+
+Use the [composite action](action.yml) in a custom GitHub job when you need its
+additional inputs, such as generated paths or marketplace pointer controls.
+This publish job belongs in a workflow triggered from your source branch:
+
+```yaml
+jobs:
+  instruction-hub:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: Promptless/instruction-hub-toolchain@main
+        with:
+          mode: publish
+          source-branch: main
+          github-token: ${{ github.token }}
+```
+
+Keep `fetch-depth: 0` for publication and pass the token as shown when checkout
+credentials are not persisted. Use `@main` for the latest merged action and
+compiler, or replace it with a full commit SHA to pin both.
+
+The action runs the bundled compiler directly:
+
+```bash
+uv run --project "$GITHUB_ACTION_PATH" promptless-instruction-hub <command>
+```
+
+### Local verification
 
 Before publishing a source change, run the full non-mutating compilation:
 
@@ -168,9 +269,10 @@ their config to `hub.yaml` and regenerate output with `pig build`.
 
 ## Release Model
 
-Action releases are tagged with immutable versions such as `v0.1.0` and a moving
-major pointer such as `v0`. Customer workflows can use `@v0` for minor updates or
-pin to an immutable tag for stricter reproducibility.
+The GitHub examples above use `@main` to follow the latest merged toolchain.
+The composite action is also available through the moving `v0` tag. Use a full
+commit SHA for a fixed revision. GitLab's template revision and compiler revision
+are configured independently, as described under [GitLab CI](#gitlab-ci).
 
 ## Managed PIG Assets
 
