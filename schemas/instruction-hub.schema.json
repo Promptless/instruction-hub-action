@@ -48,10 +48,10 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": true
+          "default": false
         }
       },
-      "default": {"enabled": true}
+      "default": {"enabled": false}
     },
     "targets": {
       "type": "array",

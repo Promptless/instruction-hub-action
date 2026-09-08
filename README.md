@@ -367,10 +367,9 @@ bundle, or managed-runtime metadata. Authored skills, agents, rules, commands,
 hooks, MCP configuration, and the Claude/Codex update skill remain available.
 Verification and publishing do not require worker credentials or worker access.
 
-During the compatibility rollout, existing configurations that omit this field
-retain ingestion. Existing hubs that use ingestion must set `enabled: true`
-before the follow-up release changes the omitted-field default to `false`.
-Enabling ingestion bundles the existing Claude/Codex host runtime; it does not
+Omitting `trace_ingestion` or `enabled` also disables ingestion. Existing hubs
+that use ingestion must explicitly set `enabled: true`. Enabling ingestion
+bundles the existing Claude/Codex host runtime; it does not
 provision a worker. Cursor and Gemini do not receive that managed runtime.
 
 After changing this setting, publish the hub and refresh its installed plugins.

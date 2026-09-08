@@ -91,8 +91,7 @@ class TraceIngestionConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # Preserve existing hubs until they explicitly opt in during the rollout.
-    enabled: bool = Field(default=True, strict=True)
+    enabled: bool = Field(default=False, strict=True)
 
 
 class HubConfig(BaseModel):
