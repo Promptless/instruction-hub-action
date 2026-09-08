@@ -14,9 +14,9 @@ pig.
 # Promptless Instruction Hub Toolchain
 
 This repository is the canonical public toolchain for Promptless Instruction
-Hub repositories. It bundles the Python compiler and exposes a
-composite GitHub Action for validating, building, and publishing generated hub
-artifacts.
+Hub repositories. It bundles the Python compiler and exposes a composite GitHub
+Action and a GitLab CI template for validating, building, and publishing generated
+hub artifacts.
 
 ## Usage
 
@@ -43,6 +43,49 @@ The action runs the bundled compiler directly:
 ```bash
 uv run --project "$GITHUB_ACTION_PATH" promptless-instruction-hub <command>
 ```
+
+### GitLab CI
+
+For a hub at the repository root, add this to `.gitlab-ci.yml`, replacing
+`<template-commit-sha>` with a full toolchain commit containing the template:
+
+```yaml
+include:
+  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/<template-commit-sha>/templates/gitlab/instruction-hub.yml
+```
+
+The [template](templates/gitlab/instruction-hub.yml) validates and builds hub
+changes in merge requests. Default-branch pushes that change hub source or CI
+configuration publish to `release/stable` and update the Claude, Codex, and Cursor
+marketplace pointers. Manually started pipelines validate on every branch and
+also publish on the default branch. Publishing is serialized, skips superseded
+hub source, and includes pointer commits from earlier jobs before pushing.
+
+Use a Linux runner that supports `image:`. Enable **Settings > CI/CD > Job token
+permissions > Allow Git push requests to the repository** in the consuming
+project. The user starting the pipeline must be allowed to push to the default
+and release branches. Publishing uses `CI_JOB_TOKEN`; its pushes do not trigger
+another pipeline. No GitHub token is needed.
+
+The template uses the default GitLab `test` and `deploy` stages and scopes its
+image and variables to its own jobs. For a pipeline with custom stages, use
+`include:inputs`:
+
+```yaml
+stages: [verify, publish]
+include:
+  - remote: https://raw.githubusercontent.com/Promptless/instruction-hub-toolchain/<template-commit-sha>/templates/gitlab/instruction-hub.yml
+    inputs:
+      check-stage: verify
+      publish-stage: publish
+      release-branch: release/stable
+```
+
+Each template revision pins the compiler to a full commit SHA. The optional
+`toolchain-ref` input overrides that compiler SHA independently of the template
+revision. The template fetches that public revision and runs the same
+`scripts/run.sh` entrypoint as the GitHub Action, with GitLab workspace,
+repository, identity, and branch checks supplied by the template.
 
 Before publishing a source change, run the full non-mutating compilation:
 
