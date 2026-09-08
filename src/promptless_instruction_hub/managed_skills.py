@@ -7,13 +7,12 @@ from pathlib import Path
 
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.models import (
-    PIG_PACKAGE_ID,
+    PIG_PLUGIN_ID,
     UPDATE_INSTRUCTION_HUB_SKILL_ID,
     Harness,
     HubConfig,
-    PackageDefinition,
+    PluginDefinition,
 )
-from promptless_instruction_hub.render.common import marketplace_name
 
 SUPPORTED_MANAGED_SKILL_TARGETS: tuple[Harness, ...] = ("claude", "codex")
 
@@ -25,11 +24,11 @@ def render_managed_skills(
     target_root: Path,
     target: Harness,
     config: HubConfig,
-    package: PackageDefinition,
+    plugin: PluginDefinition,
 ) -> tuple[str, ...]:
-    """Inject Promptless-managed skills into the canonical PIG package."""
+    """Inject Promptless-managed skills into the canonical PIG plugin."""
 
-    if package.id != PIG_PACKAGE_ID or target not in SUPPORTED_MANAGED_SKILL_TARGETS:
+    if plugin.id != PIG_PLUGIN_ID or target not in SUPPORTED_MANAGED_SKILL_TARGETS:
         return ()
 
     skill_id = UPDATE_INSTRUCTION_HUB_SKILL_ID
@@ -40,7 +39,7 @@ def render_managed_skills(
 
     destination = target_root / "skills" / skill_id
     if destination.exists():
-        msg = f"managed skill {skill_id!r} conflicts with an authored skill in package {package.id!r}"
+        msg = f"managed skill {skill_id!r} conflicts with an authored skill in plugin {plugin.id!r}"
         raise InstructionHubError(msg)
     shutil.copytree(source, destination)
     _render_update_skill_template(destination / "SKILL.md", config)
@@ -50,7 +49,7 @@ def render_managed_skills(
 def _render_update_skill_template(skill_path: Path, config: HubConfig) -> None:
     content = skill_path.read_text()
     replacements = {
-        _MARKETPLACE_NAME_TOKEN: marketplace_name(config),
+        _MARKETPLACE_NAME_TOKEN: config.marketplace.id,
     }
     for token, value in replacements.items():
         if token not in content:

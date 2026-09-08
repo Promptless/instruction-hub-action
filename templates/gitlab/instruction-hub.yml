@@ -49,7 +49,7 @@ instruction-hub-check:
         - hub.yaml
         - hub.repo-context.json
         - assets/**/*
-        - packages/**/*
+        - plugins/**/*
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
 instruction-hub-publish:
@@ -66,7 +66,7 @@ instruction-hub-publish:
       git fetch origin "+refs/heads/$CI_DEFAULT_BRANCH:refs/remotes/origin/$CI_DEFAULT_BRANCH"
       # A queued job must not replace a newer hub release with older source.
       if git diff --quiet HEAD "origin/$CI_DEFAULT_BRANCH" -- \
-        .gitlab-ci.yml .gitignore hub.yaml hub.repo-context.json assets packages; then
+        .gitlab-ci.yml .gitignore hub.yaml hub.repo-context.json assets plugins; then
         # Include pointer-only commits from earlier publish jobs before pushing.
         git merge --ff-only "origin/$CI_DEFAULT_BRANCH"
       else

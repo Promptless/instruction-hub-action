@@ -424,13 +424,13 @@ def _write_native_hook_asset(
         )
     )
     package_name = "PIG" if package_id == "pig" else package_id.replace("-", " ").title()
-    (hub_root / f"packages/{package_id}.yaml").write_text(
+    (hub_root / f"plugins/{package_id}.yaml").write_text(
         f"id: {package_id}\nname: {package_name}\nincludes:\n  - hook:hooks\n"
     )
     if package_id != "pig":
         config_path = hub_root / "hub.yaml"
         config_path.write_text(
-            config_path.read_text().replace("stable_packages:\n- pig\n", f"stable_packages:\n- pig\n- {package_id}\n")
+            config_path.read_text().replace("stable_plugins:\n- pig\n", f"stable_plugins:\n- pig\n- {package_id}\n")
         )
 
 

@@ -38,33 +38,33 @@ def test_build_emits_target_outputs_and_deterministic_manifests(tmp_path: Path) 
     assert (hub_root / "dist/cursor/pig/skills/review-docs/SKILL.md").exists()
     assert not (hub_root / "dist/cursor/pig/rules/review-docs.mdc").exists()
     codex_marketplace = json.loads((hub_root / ".agents/plugins/marketplace.json").read_text())
-    assert codex_marketplace["plugins"][0]["name"] == "promptless-instruction-hub-pig"
+    assert codex_marketplace["plugins"][0]["name"] == "pig"
     assert codex_marketplace["plugins"][0]["source"]["path"] == "./dist/codex/pig"
     assert codex_marketplace["plugins"][0]["policy"]["installation"] == "AVAILABLE"
     assert codex_marketplace["plugins"][0]["policy"]["authentication"] == "ON_INSTALL"
     assert codex_marketplace["plugins"][0]["category"] == "Productivity"
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in codex_marketplace["plugins"]] == [
-        ("promptless-instruction-hub-pig", "./dist/codex/pig"),
+        ("pig", "./dist/codex/pig"),
     ]
     claude_marketplace = json.loads((hub_root / ".claude-plugin/marketplace.json").read_text())
     assert claude_marketplace["owner"]["name"] == "Promptless"
-    assert claude_marketplace["plugins"][0]["name"] == "promptless-instruction-hub-pig"
+    assert claude_marketplace["plugins"][0]["name"] == "pig"
     assert claude_marketplace["plugins"][0]["displayName"] == "PIG"
     assert claude_marketplace["plugins"][0]["source"] == "./dist/claude/pig"
     assert [(plugin["name"], plugin["displayName"], plugin["source"]) for plugin in claude_marketplace["plugins"]] == [
-        ("promptless-instruction-hub-pig", "PIG", "./dist/claude/pig"),
+        ("pig", "PIG", "./dist/claude/pig"),
     ]
     cursor_marketplace = json.loads((hub_root / ".cursor-plugin/marketplace.json").read_text())
     assert cursor_marketplace["owner"]["name"] == "Promptless"
-    assert cursor_marketplace["plugins"][0]["name"] == "promptless-instruction-hub-pig"
+    assert cursor_marketplace["plugins"][0]["name"] == "pig"
     assert cursor_marketplace["plugins"][0]["source"] == "dist/cursor/pig"
     claude_manifest = json.loads((hub_root / "dist/claude/pig/.claude-plugin/plugin.json").read_text())
-    assert claude_manifest["name"] == "promptless-instruction-hub-pig"
+    assert claude_manifest["name"] == "pig"
     assert claude_manifest["displayName"] == "PIG"
     assert claude_manifest["skills"] == "./skills/"
     assert claude_manifest["mcpServers"] == "./.mcp.json"
     codex_manifest = json.loads((hub_root / "dist/codex/pig/.codex-plugin/plugin.json").read_text())
-    assert codex_manifest["name"] == "promptless-instruction-hub-pig"
+    assert codex_manifest["name"] == "pig"
     assert codex_manifest["skills"] == "./skills/"
     assert codex_manifest["hooks"] == "./hooks/hooks.json"
     assert codex_manifest["mcpServers"] == "./.mcp.json"
@@ -89,23 +89,23 @@ def test_build_emits_target_outputs_and_deterministic_manifests(tmp_path: Path) 
     codex_update_skill = (hub_root / "dist/codex/pig/skills/update-instruction-hub/SKILL.md").read_text()
     assert "name: update-instruction-hub\n" in codex_update_skill
     assert "# Update Instruction Hub\n" in codex_update_skill
-    assert "generated marketplace name `promptless-instruction-hub-marketplace`" in codex_update_skill
-    assert "marketplaceName` set to `promptless-instruction-hub-marketplace`" in codex_update_skill
+    assert "generated marketplace name `promptless-instruction-hub`" in codex_update_skill
+    assert "marketplaceName` set to `promptless-instruction-hub`" in codex_update_skill
     assert "refreshes only the configured Git marketplace snapshot" in codex_update_skill
     assert "skills/list" in codex_update_skill
     assert "{{ instruction_hub_" not in codex_update_skill
     claude_update_skill = (hub_root / "dist/claude/pig/skills/update-instruction-hub/SKILL.md").read_text()
     assert "name: update-instruction-hub\n" in claude_update_skill
     assert "# Update Instruction Hub\n" in claude_update_skill
-    assert "generated marketplace name `promptless-instruction-hub-marketplace`" in claude_update_skill
-    assert "claude plugin marketplace update promptless-instruction-hub-marketplace" in claude_update_skill
+    assert "generated marketplace name `promptless-instruction-hub`" in claude_update_skill
+    assert "claude plugin marketplace update promptless-instruction-hub" in claude_update_skill
     assert "claude plugin update <id> --scope <scope>" in claude_update_skill
     assert "/reload-plugins" in claude_update_skill
     assert "{{ instruction_hub_" not in claude_update_skill
     for target in ("cursor", "gemini"):
         assert not (hub_root / "dist" / target / "pig/skills/update-instruction-hub").exists()
     cursor_manifest = json.loads((hub_root / "dist/cursor/pig/.cursor-plugin/plugin.json").read_text())
-    assert cursor_manifest["name"] == "promptless-instruction-hub-pig"
+    assert cursor_manifest["name"] == "pig"
     assert cursor_manifest["displayName"] == "PIG"
     assert cursor_manifest["skills"] == "./skills/"
     gemini_manifest = json.loads((hub_root / "dist/gemini/pig/gemini-extension.json").read_text())
@@ -123,9 +123,7 @@ def test_build_emits_target_outputs_and_deterministic_manifests(tmp_path: Path) 
     assert release_manifest["version_basis"]["target_hashes"] == release_manifest["target_hashes"]
     assert release_manifest["version_basis"]["managed_runtimes"] == release_manifest["managed_runtimes"]
     assert {runtime["package_id"] for runtime in release_manifest["managed_runtimes"]} == {"pig"}
-    assert {runtime["plugin_id"] for runtime in release_manifest["managed_runtimes"]} == {
-        "promptless-instruction-hub-pig"
-    }
+    assert {runtime["plugin_id"] for runtime in release_manifest["managed_runtimes"]} == {"pig"}
     assert {runtime["plugin_name"] for runtime in release_manifest["managed_runtimes"]} == {"PIG"}
     assert {asset["title"] for asset in release_manifest["assets"]} == {"Repository MCP Servers", "Review Docs"}
 
@@ -137,10 +135,11 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
         "\n".join(
             [
                 "org: Promptless",
-                "plugin_id: promptless-instruction-hub",
-                "plugin_name: Promptless Instruction Hub",
+                "marketplace:",
+                "  id: promptless-instruction-hub",
+                "  name: Promptless Instruction Hub",
                 "plugin_version: 0.1.0",
-                "stable_packages:",
+                "stable_plugins:",
                 "  - dev",
                 "  - ops",
                 "  - pig",
@@ -153,8 +152,8 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
             ]
         )
     )
-    (hub_root / "packages/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:authoring-tools\n")
-    (hub_root / "packages/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:runbooks\n")
+    (hub_root / "plugins/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:authoring-tools\n")
+    (hub_root / "plugins/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:runbooks\n")
     (hub_root / "assets/skills/authoring-tools").mkdir(parents=True)
     (hub_root / "assets/skills/authoring-tools/SKILL.md").write_text("# Authoring Tools\n")
     (hub_root / "assets/skills/runbooks").mkdir(parents=True)
@@ -163,7 +162,7 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
     validation = validate_hub(hub_root)
     build_hub(hub_root)
 
-    assert [stable_package.definition.id for stable_package in validation.stable_packages] == ["dev", "ops", "pig"]
+    assert [stable_package.definition.id for stable_package in validation.stable_plugins] == ["dev", "ops", "pig"]
     assert [asset.ref for asset in validation.stable_assets] == ["skill:authoring-tools", "skill:runbooks"]
     assert (hub_root / "dist/codex/dev/skills/authoring-tools/SKILL.md").exists()
     assert not (hub_root / "dist/codex/dev/skills/runbooks/SKILL.md").exists()
@@ -182,21 +181,21 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
 
     codex_marketplace = json.loads((hub_root / ".agents/plugins/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]["path"]) for plugin in codex_marketplace["plugins"]] == [
-        ("promptless-instruction-hub-dev", "./dist/codex/dev"),
-        ("promptless-instruction-hub-ops", "./dist/codex/ops"),
-        ("promptless-instruction-hub-pig", "./dist/codex/pig"),
+        ("dev", "./dist/codex/dev"),
+        ("ops", "./dist/codex/ops"),
+        ("pig", "./dist/codex/pig"),
     ]
     claude_marketplace = json.loads((hub_root / ".claude-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["displayName"], plugin["source"]) for plugin in claude_marketplace["plugins"]] == [
-        ("promptless-instruction-hub-dev", "Dev", "./dist/claude/dev"),
-        ("promptless-instruction-hub-ops", "Ops", "./dist/claude/ops"),
-        ("promptless-instruction-hub-pig", "PIG", "./dist/claude/pig"),
+        ("dev", "Dev", "./dist/claude/dev"),
+        ("ops", "Ops", "./dist/claude/ops"),
+        ("pig", "PIG", "./dist/claude/pig"),
     ]
     cursor_marketplace = json.loads((hub_root / ".cursor-plugin/marketplace.json").read_text())
     assert [(plugin["name"], plugin["source"]) for plugin in cursor_marketplace["plugins"]] == [
-        ("promptless-instruction-hub-dev", "dist/cursor/dev"),
-        ("promptless-instruction-hub-ops", "dist/cursor/ops"),
-        ("promptless-instruction-hub-pig", "dist/cursor/pig"),
+        ("dev", "dist/cursor/dev"),
+        ("ops", "dist/cursor/ops"),
+        ("pig", "dist/cursor/pig"),
     ]
     release_manifest = json.loads((hub_root / "hub.release.json").read_text())
     assert release_manifest["stable_packages"] == ["dev", "ops", "pig"]
@@ -219,7 +218,7 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
 def test_default_source_path_anchors_to_hub_assets_dir(tmp_path: Path) -> None:
     hub_root = tmp_path / "assets" / "customer" / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:review-docs\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:review-docs\n")
     skill_root = hub_root / "assets/skills/review-docs"
     skill_root.mkdir(parents=True)
     (skill_root / "SKILL.md").write_text("# Review Docs\n")
@@ -299,7 +298,7 @@ def test_verify_fully_compiles_without_changing_stale_worktree(tmp_path: Path) -
 def test_verify_failure_does_not_change_worktree(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
-    (hub_root / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:missing\n")
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:missing\n")
     before = _snapshot_tree(hub_root)
 
     with pytest.raises(InstructionHubError, match="missing"):
@@ -315,10 +314,11 @@ def test_build_renders_projected_rules_native_cursor_rules_and_mcp_assets(tmp_pa
         "\n".join(
             [
                 "org: Acme",
-                "plugin_id: acme-instruction-hub",
-                "plugin_name: Acme Instruction Hub",
+                "marketplace:",
+                "  id: acme-instruction-hub",
+                "  name: Acme Instruction Hub",
                 "plugin_version: 0.1.0",
-                "stable_packages:",
+                "stable_plugins:",
                 "  - pig",
                 "targets:",
                 "  - claude",
@@ -328,7 +328,7 @@ def test_build_renders_projected_rules_native_cursor_rules_and_mcp_assets(tmp_pa
             ]
         )
     )
-    (hub_root / "packages/pig.yaml").write_text(
+    (hub_root / "plugins/pig.yaml").write_text(
         "\n".join(
             [
                 "id: pig",
@@ -372,13 +372,13 @@ def test_build_renders_projected_rules_native_cursor_rules_and_mcp_assets(tmp_pa
 
     assert (hub_root / "dist/codex/pig/projected/codex/team-style.md").read_text().startswith("# Team Style")
     update_skill = (hub_root / "dist/codex/pig/skills/update-instruction-hub/SKILL.md").read_text()
-    assert "generated marketplace name `acme-instruction-hub-marketplace`" in update_skill
-    assert "marketplaceName` set to `acme-instruction-hub-marketplace`" in update_skill
-    assert "promptless-instruction-hub-marketplace" not in update_skill
+    assert "generated marketplace name `acme-instruction-hub`" in update_skill
+    assert "marketplaceName` set to `acme-instruction-hub`" in update_skill
+    assert "promptless-instruction-hub" not in update_skill
     claude_update_skill = (hub_root / "dist/claude/pig/skills/update-instruction-hub/SKILL.md").read_text()
-    assert "generated marketplace name `acme-instruction-hub-marketplace`" in claude_update_skill
-    assert "claude plugin marketplace update acme-instruction-hub-marketplace" in claude_update_skill
-    assert "promptless-instruction-hub-marketplace" not in claude_update_skill
+    assert "generated marketplace name `acme-instruction-hub`" in claude_update_skill
+    assert "claude plugin marketplace update acme-instruction-hub" in claude_update_skill
+    assert "promptless-instruction-hub" not in claude_update_skill
     claude_manifest = json.loads((hub_root / "dist/claude/pig/.claude-plugin/plugin.json").read_text())
     assert claude_manifest["skills"] == "./skills/"
     assert "alwaysApply: false" in (hub_root / "dist/cursor/pig/rules/team-style.mdc").read_text()

@@ -6,12 +6,10 @@ from pathlib import Path
 from collections.abc import Sequence
 
 from promptless_instruction_hub.fs import write_json
-from promptless_instruction_hub.models import HubConfig, PackageDefinition, StablePackage
+from promptless_instruction_hub.models import HubConfig, PluginDefinition, StablePlugin
 from promptless_instruction_hub.render.common import (
     RenderedAssets,
     base_plugin_manifest,
-    marketplace_name,
-    package_plugin_id,
     plugin_description,
 )
 
@@ -19,14 +17,14 @@ from promptless_instruction_hub.render.common import (
 def write_manifest(
     target_root: Path,
     config: HubConfig,
-    package: PackageDefinition,
+    plugin: PluginDefinition,
     rendered: RenderedAssets,
     mcp_server_names: list[str],
 ) -> None:
     """Write the Claude Code plugin manifest."""
 
-    manifest = base_plugin_manifest(config, package)
-    manifest["displayName"] = package.name
+    manifest = base_plugin_manifest(config, plugin)
+    manifest["displayName"] = plugin.name
     manifest["author"] = {"name": config.org}
     if rendered.get("skills"):
         manifest["skills"] = "./skills/"
@@ -39,24 +37,24 @@ def write_manifest(
     write_json(target_root / ".claude-plugin/plugin.json", manifest)
 
 
-def write_marketplace(output_root: Path, config: HubConfig, packages: Sequence[StablePackage]) -> None:
+def write_marketplace(output_root: Path, config: HubConfig, plugins: Sequence[StablePlugin]) -> None:
     """Write the Claude Code repository marketplace manifest."""
 
     marketplace = {
-        "name": marketplace_name(config),
+        "name": config.marketplace.id,
         "owner": {"name": config.org},
-        "description": f"{config.plugin_name} marketplace.",
+        "description": f"{config.marketplace.name} marketplace.",
         "plugins": [
             {
-                "name": package_plugin_id(config, stable_package.definition),
-                "source": f"./dist/claude/{stable_package.definition.id}",
-                "displayName": stable_package.definition.name,
-                "description": plugin_description(config, stable_package.definition),
+                "name": stable_plugin.definition.id,
+                "source": f"./dist/claude/{stable_plugin.definition.id}",
+                "displayName": stable_plugin.definition.name,
+                "description": plugin_description(config, stable_plugin.definition),
                 "version": config.plugin_version,
                 "author": {"name": config.org},
                 "category": "Productivity",
             }
-            for stable_package in packages
+            for stable_plugin in plugins
         ],
     }
     write_json(output_root / ".claude-plugin/marketplace.json", marketplace)

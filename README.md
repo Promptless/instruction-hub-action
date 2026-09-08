@@ -195,7 +195,7 @@ Before publishing a source change, run the full non-mutating compilation:
 pig verify --hub .
 ```
 
-`pig verify` validates every stable asset and renders every stable package for
+`pig verify` validates every stable asset and renders every stable plugin for
 every configured target in an ephemeral directory. It does not create, update,
 or compare generated files in the source worktree, whether verification
 succeeds or fails. Use `pig build --check` instead when the repository
@@ -210,6 +210,77 @@ uv run pytest tests -n auto --dist worksteal
 ```
 
 Omit the parallel flags when running a single test file or a `-k` selection.
+
+## Marketplace and plugin identities
+
+`hub.yaml` declares the marketplace's literal ID and display name:
+
+```yaml
+org: Promptless
+marketplace:
+  id: promptless-instruction-hub
+  name: Promptless Instruction Hub
+plugin_version: 0.1.0
+stable_plugins: [pig, dev]
+targets: [claude, codex, gemini, cursor]
+```
+
+Each file in `plugins/*.yaml` defines one plugin, using its own literal ID:
+
+```yaml
+# plugins/dev.yaml
+id: dev
+name: Promptless Dev
+includes:
+  - skill:review-docs
+```
+
+The skill in this example must exist in `assets/skills/review-docs/`. Keep the
+required `plugins/pig.yaml` created by `pig init` in `stable_plugins`.
+
+The compiler uses `marketplace.id` as the marketplace name and each plugin's
+`id` as its native name. It adds no prefix or suffix. IDs use lowercase letters,
+digits, and hyphens, with a letter or digit at each end. Plugin display names
+come from `name` where the target supports them. Output goes to
+`dist/{target}/{plugin.id}/`. Gemini receives extensions with the same plugin
+IDs; it has no generated marketplace manifest.
+
+`pig init --org Acme` defaults to marketplace ID `acme-instruction-hub` and
+display name `Acme Instruction Hub`. Override those with `--marketplace-id` and
+`--marketplace-name`. `plugin_version` remains the shared version floor for all
+compiled plugins; publication advances the generated version when output changes.
+
+### Migrating existing hubs
+
+This is a breaking source configuration and installed plugin identity change.
+Coordinate the toolchain upgrade with the hub migration. Validation rejects
+legacy fields and the old `packages/` directory with migration guidance.
+
+1. Replace root `plugin_id` and `plugin_name` with `marketplace.id` and
+   `marketplace.name`. To keep an existing marketplace registration, set the new
+   ID to its previous generated name: the old `plugin_id` plus `-marketplace`.
+   The compiler now uses that value verbatim.
+2. Move `packages/` to `plugins/` and rename `stable_packages` to
+   `stable_plugins` in `hub.yaml`. Keep each definition's `id`, `name`, and
+   `includes`. Update custom CI path filters and scripts that reference the old
+   directory or `pig init --plugin-id` / `--plugin-name` flags.
+3. Run `pig verify --hub .`, then publish using the upgraded toolchain. Existing
+   version 1 release manifests remain readable for publish-time version bumps.
+4. Refresh the marketplace and replace installed plugins using their new IDs.
+   For example, `promptless-instruction-hub-dev` becomes `dev`. Remove the old
+   installation so its skills and hooks are not loaded alongside the new one.
+   An updater cannot infer that these different plugin IDs are replacements.
+
+To distinguish plugins from multiple hubs in a host that uses plugin names as
+skill namespaces, choose explicit IDs such as `acme-dev` for customer plugins.
+The compiler never adds that prefix automatically. The managed PIG plugin
+continues to require the ID `pig`.
+
+Version 1 release manifests and enrollment requests retain their existing field
+names for deployed readers: `plugin` contains marketplace metadata and the shared
+plugin version, `stable_packages` / `packages` describe plugins, and runtime
+`package_id` carries the source plugin ID. Runtime `plugin_id` now matches the
+literal ID in the native plugin manifest.
 
 ## Modes
 
@@ -240,9 +311,9 @@ does not verify that import path: Cursor needs its own repository access, and
 some desktop importers still reject GitLab URLs. Verify installation and refresh
 through the team's GitLab-capable importer before relying on Cursor delivery.
 
-Every hub must keep the canonical `pig` package in `stable_packages`. `pig init`
-scaffolds that package as the home for scanned shared instructions and the
-Promptless-managed lifecycle integration. Other customer instruction packages
+Every hub must keep the canonical `pig` plugin in `stable_plugins`. `pig init`
+scaffolds that plugin as the home for scanned shared instructions and the
+Promptless-managed lifecycle integration. Other customer instruction plugins
 do not receive managed hooks or runtime files.
 
 ## Hub File Layout

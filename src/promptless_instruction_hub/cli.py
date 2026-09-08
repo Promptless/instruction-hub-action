@@ -35,8 +35,8 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser = subcommands.add_parser("init", help="initialize an empty Instruction Hub")
     _add_hub_arg(init_parser)
     init_parser.add_argument("--org", default="Promptless")
-    init_parser.add_argument("--plugin-id")
-    init_parser.add_argument("--plugin-name")
+    init_parser.add_argument("--marketplace-id")
+    init_parser.add_argument("--marketplace-name")
     init_parser.add_argument("--plugin-version", default="0.1.0")
 
     scan_parser = subcommands.add_parser("scan", help="import reusable assets and inventory repo context")
@@ -80,8 +80,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         root = init_hub(
             args.hub,
             org=args.org,
-            plugin_id=args.plugin_id,
-            plugin_name=args.plugin_name,
+            marketplace_id=args.marketplace_id,
+            marketplace_name=args.marketplace_name,
             plugin_version=args.plugin_version,
         )
         print(f"initialized Instruction Hub at {root}")

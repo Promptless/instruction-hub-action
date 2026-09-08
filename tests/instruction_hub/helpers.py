@@ -171,10 +171,11 @@ def _write_hub_config(hub_root: Path, targets: tuple[str, ...]) -> None:
         "\n".join(
             [
                 "org: Acme",
-                "plugin_id: acme-instruction-hub",
-                "plugin_name: Acme Instruction Hub",
+                "marketplace:",
+                "  id: acme-instruction-hub",
+                "  name: Acme Instruction Hub",
                 "plugin_version: 0.1.0",
-                "stable_packages:",
+                "stable_plugins:",
                 "  - pig",
                 "targets:",
                 target_lines,
@@ -184,16 +185,17 @@ def _write_hub_config(hub_root: Path, targets: tuple[str, ...]) -> None:
     )
 
 
-def _configure_split_package_hub(hub_root: Path, targets: tuple[str, ...]) -> None:
+def _configure_split_plugin_hub(hub_root: Path, targets: tuple[str, ...]) -> None:
     target_lines = "\n".join(f"  - {target}" for target in targets)
     (hub_root / "hub.yaml").write_text(
         "\n".join(
             [
                 "org: Acme",
-                "plugin_id: acme-instruction-hub",
-                "plugin_name: Acme Instruction Hub",
+                "marketplace:",
+                "  id: acme-instruction-hub",
+                "  name: Acme Instruction Hub",
                 "plugin_version: 0.1.0",
-                "stable_packages:",
+                "stable_plugins:",
                 "  - dev",
                 "  - ops",
                 "  - pig",
@@ -203,8 +205,8 @@ def _configure_split_package_hub(hub_root: Path, targets: tuple[str, ...]) -> No
             ]
         )
     )
-    (hub_root / "packages/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:authoring-tools\n")
-    (hub_root / "packages/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:runbooks\n")
+    (hub_root / "plugins/dev.yaml").write_text("id: dev\nname: Dev\nincludes:\n  - skill:authoring-tools\n")
+    (hub_root / "plugins/ops.yaml").write_text("id: ops\nname: Ops\nincludes:\n  - skill:runbooks\n")
     (hub_root / "assets/skills/authoring-tools").mkdir(parents=True, exist_ok=True)
     (hub_root / "assets/skills/authoring-tools/SKILL.md").write_text("# Authoring Tools\n")
     (hub_root / "assets/skills/runbooks").mkdir(parents=True, exist_ok=True)

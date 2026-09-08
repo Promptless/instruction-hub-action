@@ -242,7 +242,7 @@ def _build_current_version_basis(validation: ValidationResult, *, plugin_version
         managed_runtimes = render_target_plugins(
             output_root,
             versioned_validation.config,
-            versioned_validation.stable_packages,
+            versioned_validation.stable_plugins,
         )
         return build_release_version_basis(output_root, versioned_validation, managed_runtimes)
 
@@ -251,9 +251,9 @@ def _with_plugin_version(validation: ValidationResult, plugin_version: str) -> V
     config = HubConfig.model_validate({**validation.config.model_dump(), "plugin_version": plugin_version})
     return ValidationResult(
         config=config,
-        packages=validation.packages,
+        plugins=validation.plugins,
         assets=validation.assets,
-        stable_packages=validation.stable_packages,
+        stable_plugins=validation.stable_plugins,
     )
 
 
