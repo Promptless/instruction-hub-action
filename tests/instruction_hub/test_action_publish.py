@@ -252,6 +252,49 @@ def test_action_publish_writes_release_branch_and_marketplace_pointers_for_stabl
     assert output_path.read_text() == "release-branch=release/stable\n"
 
 
+@pytest.mark.parametrize(
+    ("server_url", "repository", "hub_root"),
+    [
+        ("https://gitlab.com", "promptless/instruction-hub", "."),
+        ("https://gitlab.com", "group/subgroup/instruction-hub", "docs/hub"),
+        ("https://git.example.com/gitlab/", "group/subgroup/instruction-hub", "docs/hub"),
+    ],
+)
+def test_action_publish_cursor_pointer_preserves_non_github_repository_and_release_path(
+    tmp_path: Path, server_url: str, repository: str, hub_root: str
+) -> None:
+    repo = _init_action_repo(tmp_path / "publish-gitlab", targets=("cursor",), hub_root_name=hub_root)
+    release_branch = "releases/instructions"
+
+    result = _run_action(
+        repo,
+        tmp_path / "github-output.txt",
+        hub_root=hub_root,
+        release_branch=release_branch,
+        extra_env={"GITHUB_SERVER_URL": server_url, "GITHUB_REPOSITORY": repository},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    _git(repo, "fetch", "origin", "main", release_branch)
+    prefix = "" if hub_root == "." else f"{hub_root}/"
+    marketplace_path = f"{prefix}.cursor-plugin/marketplace.json"
+    pointer = json.loads(_git_output(repo, "show", f"origin/main:{marketplace_path}"))
+    assert pointer["plugins"][0]["source"] == {
+        "source": "git-subdir",
+        "url": f"{server_url.rstrip('/')}/{repository}.git",
+        "path": f"{prefix}dist/cursor/pig",
+        "ref": release_branch,
+    }
+    assert "version" not in pointer["plugins"][0]
+    release_marketplace = json.loads(_git_output(repo, "show", f"origin/{release_branch}:{marketplace_path}"))
+    assert release_marketplace["plugins"][0]["source"] == "dist/cursor/pig"
+    plugin_path = pointer["plugins"][0]["source"]["path"]
+    manifest = json.loads(
+        _git_output(repo, "show", f"origin/{release_branch}:{plugin_path}/.cursor-plugin/plugin.json")
+    )
+    assert manifest["name"] == pointer["plugins"][0]["name"]
+
+
 def test_action_publish_bumps_and_rewrites_outputs_when_package_id_changes(tmp_path: Path) -> None:
     repo = _init_action_repo(tmp_path / "publish-package-id-rename", targets=("claude", "codex", "cursor"))
     _configure_split_package_hub(repo, ("claude", "codex", "cursor"))
@@ -492,11 +535,13 @@ exec "$REAL_GIT" "$@"
         assert "x-access-token:private-token" in log_lines[command_index - 1]
 
 
-def test_action_publish_second_run_is_noop(tmp_path: Path) -> None:
-    repo = _init_action_repo(tmp_path / "publish-noop", targets=("claude", "codex"))
+@pytest.mark.parametrize("server_url", ["https://github.com", "https://gitlab.com"])
+def test_action_publish_second_run_is_noop(tmp_path: Path, server_url: str) -> None:
+    repo = _init_action_repo(tmp_path / "publish-noop", targets=("claude", "codex", "cursor"))
+    env = {"GITHUB_SERVER_URL": server_url}
 
-    first = _run_action(repo, tmp_path / "github-output-first.txt")
-    second = _run_action(repo, tmp_path / "github-output-second.txt")
+    first = _run_action(repo, tmp_path / "github-output-first.txt", extra_env=env)
+    second = _run_action(repo, tmp_path / "github-output-second.txt", extra_env=env)
 
     assert first.returncode == 0, first.stdout + first.stderr
     assert second.returncode == 0, second.stdout + second.stderr
@@ -504,8 +549,10 @@ def test_action_publish_second_run_is_noop(tmp_path: Path) -> None:
     assert "No marketplace pointer changes to publish." in second.stdout
 
 
-def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_path: Path) -> None:
+@pytest.mark.parametrize("server_url", ["https://github.com", "https://gitlab.com"])
+def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_path: Path, server_url: str) -> None:
     repo = _init_action_repo(tmp_path / "publish-version-bump", targets=("claude", "codex", "cursor", "gemini"))
+    env = {"GITHUB_SERVER_URL": server_url}
     (repo / "packages/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - skill:review-docs\n")
     skill_root = repo / "assets/skills/review-docs"
     skill_root.mkdir(parents=True)
@@ -513,7 +560,7 @@ def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_pa
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "add review docs")
 
-    first = _run_action(repo, tmp_path / "github-output-first.txt")
+    first = _run_action(repo, tmp_path / "github-output-first.txt", extra_env=env)
     assert first.returncode == 0, first.stdout + first.stderr
     _git(repo, "fetch", "origin", "release/stable")
     assert _release_branch_plugin_versions(repo) == {"0.1.0"}
@@ -522,7 +569,7 @@ def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_pa
     _git(repo, "add", "assets/skills/review-docs/SKILL.md")
     _git(repo, "commit", "-m", "update review docs")
 
-    second = _run_action(repo, tmp_path / "github-output-second.txt")
+    second = _run_action(repo, tmp_path / "github-output-second.txt", extra_env=env)
     assert second.returncode == 0, second.stdout + second.stderr
     _git(repo, "fetch", "origin", "release/stable")
 
@@ -533,7 +580,7 @@ def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_pa
     assert stable_channel["plugin_version"] == "0.1.1"
     assert "plugin_version: 0.1.0" in (repo / "hub.yaml").read_text()
 
-    third = _run_action(repo, tmp_path / "github-output-third.txt")
+    third = _run_action(repo, tmp_path / "github-output-third.txt", extra_env=env)
     assert third.returncode == 0, third.stdout + third.stderr
     assert "No release branch changes to publish." in third.stdout
 

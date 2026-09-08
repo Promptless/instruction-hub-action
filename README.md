@@ -78,6 +78,23 @@ Customer hubs should usually use `build` for pull requests and `publish` after
 changes merge to the default branch. Use `check` only for repositories that
 intentionally commit generated artifacts on the same branch as source assets.
 
+Cursor source-branch pointers use the existing `type: github` descriptor for
+`github.com`. Other hosts, including GitLab, use a `git-subdir` source with the
+repository URL, plugin path, and release branch. This preserves GitLab subgroup
+paths and supports hubs inside a repository subdirectory. Release-branch Cursor
+marketplaces continue to use relative plugin paths.
+
+GitLab CI adapters should map `GITHUB_SERVER_URL` to `CI_SERVER_URL` and
+`GITHUB_REPOSITORY` to `CI_PROJECT_PATH`. `INPUT_UPDATE_CURSOR_POINTER` enables
+the GitLab pointer writer. Keep `INPUT_GITHUB_TOKEN` unset and use GitLab checkout
+credentials for publishing.
+
+Cursor advertises GitLab imports through its
+[team marketplaces](https://cursor.com/changelog/customize). Manifest generation
+does not verify that import path: Cursor needs its own repository access, and
+some desktop importers still reject GitLab URLs. Verify installation and refresh
+through the team's GitLab-capable importer before relying on Cursor delivery.
+
 Every hub must keep the canonical `pig` package in `stable_packages`. `pig init`
 scaffolds that package as the home for scanned shared instructions and the
 Promptless-managed lifecycle integration. Other customer instruction packages
