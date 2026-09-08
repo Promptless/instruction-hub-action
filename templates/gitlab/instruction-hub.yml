@@ -1,0 +1,94 @@
+spec:
+  inputs:
+    toolchain-ref:
+      description: Use main for the latest merged toolchain, or pin a full commit SHA.
+      default: main
+      regex: '^(main|[0-9a-f]{40})$'
+    release-branch:
+      description: Branch that receives generated hub artifacts.
+      default: release/stable
+    check-stage:
+      description: Existing pipeline stage for validation.
+      default: test
+    publish-stage:
+      description: Existing pipeline stage for publishing.
+      default: deploy
+---
+.instruction-hub:
+  image: python:3.13-bookworm
+  variables:
+    GIT_DEPTH: "0"
+    INSTRUCTION_HUB_TOOLCHAIN_REF: $[[ inputs.toolchain-ref ]]
+    INSTRUCTION_HUB_RELEASE_BRANCH: $[[ inputs.release-branch ]]
+    UV_VERSION: "0.8.14"
+  before_script:
+    - python -m pip install --disable-pip-version-check --no-cache-dir "uv==$UV_VERSION"
+    - export INSTRUCTION_HUB_TOOLCHAIN_DIR="$(mktemp -d)"
+    - git init --quiet "$INSTRUCTION_HUB_TOOLCHAIN_DIR"
+    - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" remote add origin https://github.com/Promptless/instruction-hub-toolchain.git
+    - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" fetch --quiet --depth 1 origin "$INSTRUCTION_HUB_TOOLCHAIN_REF"
+    - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" checkout --quiet --detach FETCH_HEAD
+    - git -C "$INSTRUCTION_HUB_TOOLCHAIN_DIR" log -1 --format='Toolchain commit %H'
+
+instruction-hub-check:
+  extends: .instruction-hub
+  stage: $[[ inputs.check-stage ]]
+  interruptible: true
+  script:
+    - |
+      GITHUB_ACTION_PATH="$INSTRUCTION_HUB_TOOLCHAIN_DIR" \
+      GITHUB_WORKSPACE="$CI_PROJECT_DIR" \
+      INPUT_MODE=build \
+      INPUT_HUB_ROOT=. \
+        "$INSTRUCTION_HUB_TOOLCHAIN_DIR/scripts/run.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: &hub-source
+        - .gitlab-ci.yml
+        - .gitignore
+        - hub.yaml
+        - hub.repo-context.json
+        - assets/**/*
+        - packages/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+instruction-hub-publish:
+  extends: .instruction-hub
+  stage: $[[ inputs.publish-stage ]]
+  interruptible: false
+  resource_group: instruction-hub-release
+  script:
+    - git remote set-url origin "$CI_REPOSITORY_URL"
+    - |
+      # GitLab checks out a detached commit. Only publish default-branch jobs.
+      test "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH"
+      test -z "${CI_COMMIT_TAG:-}"
+      git fetch origin "+refs/heads/$CI_DEFAULT_BRANCH:refs/remotes/origin/$CI_DEFAULT_BRANCH"
+      # A queued job must not replace a newer hub release with older source.
+      if git diff --quiet HEAD "origin/$CI_DEFAULT_BRANCH" -- \
+        .gitlab-ci.yml .gitignore hub.yaml hub.repo-context.json assets packages; then
+        # Include pointer-only commits from earlier publish jobs before pushing.
+        git merge --ff-only "origin/$CI_DEFAULT_BRANCH"
+      else
+        status=$?
+        test "$status" -eq 1 || exit "$status"
+        echo "Hub source changed while this job was queued; a newer pipeline owns publication."
+        exit 0
+      fi
+    - |
+      GITHUB_ACTION_PATH="$INSTRUCTION_HUB_TOOLCHAIN_DIR" \
+      GITHUB_WORKSPACE="$CI_PROJECT_DIR" \
+      GITHUB_SERVER_URL="$CI_SERVER_URL" \
+      GITHUB_REPOSITORY="$CI_PROJECT_PATH" \
+      INPUT_MODE=publish \
+      INPUT_HUB_ROOT=. \
+      INPUT_RELEASE_BRANCH="$INSTRUCTION_HUB_RELEASE_BRANCH" \
+      INPUT_SOURCE_BRANCH="$CI_DEFAULT_BRANCH" \
+      INPUT_UPDATE_CURSOR_POINTER=true \
+      INPUT_COMMIT_USER_NAME="GitLab CI" \
+      INPUT_COMMIT_USER_EMAIL="gitlab-ci@$CI_SERVER_HOST" \
+        "$INSTRUCTION_HUB_TOOLCHAIN_DIR/scripts/run.sh"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: *hub-source
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
