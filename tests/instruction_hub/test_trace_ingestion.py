@@ -33,7 +33,7 @@ def test_init_disables_ingestion_without_overwriting_existing_choice(tmp_path: P
 
 
 @pytest.mark.parametrize("omit_section", [True, False])
-def test_omitted_setting_preserves_ingestion_during_rollout(tmp_path: Path, omit_section: bool) -> None:
+def test_omitted_setting_disables_ingestion(tmp_path: Path, omit_section: bool) -> None:
     init_hub(tmp_path)
     config = read_yaml_mapping(tmp_path / "hub.yaml")
     if omit_section:
@@ -41,7 +41,10 @@ def test_omitted_setting_preserves_ingestion_during_rollout(tmp_path: Path, omit
     else:
         config["trace_ingestion"] = {}
     write_yaml(tmp_path / "hub.yaml", config)
-    assert load_hub_config(tmp_path).trace_ingestion.enabled
+    assert not load_hub_config(tmp_path).trace_ingestion.enabled
+    build_hub(tmp_path)
+    assert not (tmp_path / "dist/codex/pig/runtime").exists()
+    assert not (tmp_path / "dist/claude/pig/hooks/hooks.json").exists()
 
 
 @pytest.mark.parametrize(
