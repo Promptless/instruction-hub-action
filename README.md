@@ -325,6 +325,12 @@ Scan-generated metadata is committed as a root file:
 
 - `hub.repo-context.json`: scanned repository-context inventory.
 
+Native Cursor rules can be authored as `assets/rules/<id>.mdc` with a matching
+`<id>.asset.yaml` sidecar declaring `support.cursor.mode: native`. The compiler
+preserves existing rule frontmatter, including `description`, `globs`, and
+`alwaysApply`. Rules without frontmatter receive the generated description and
+`alwaysApply: false` defaults.
+
 Every generated plugin embeds local metadata as root files inside each plugin:
 
 - `hub.release.json`: plugin-local release/status manifest.

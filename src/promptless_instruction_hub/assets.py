@@ -28,7 +28,7 @@ ASSETS_DIR = Path("assets")
 METADATA_FILE = "asset.yaml"
 SECRET_KEY_FRAGMENTS = ("token", "secret", "password", "api_key", "apikey", "private_key")
 SECRET_KEY_NAMES = {"authorization", "cookie", "proxy_authorization", "x_api_key"}
-SUPPORTED_FILE_SUFFIXES = (".md", ".yaml", ".yml", ".json")
+SUPPORTED_FILE_SUFFIXES = (".md", ".mdc", ".yaml", ".yml", ".json")
 SIDECAR_METADATA_SUFFIX = ".asset.yaml"
 DEFAULT_TITLES = {
     "repo-mcp": "Repository MCP Servers",

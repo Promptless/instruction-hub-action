@@ -311,6 +311,29 @@ def test_verify_failure_does_not_change_worktree(tmp_path: Path) -> None:
     assert _snapshot_tree(hub_root) == before
 
 
+@pytest.mark.parametrize(
+    "settings",
+    ["alwaysApply: true", 'globs: ["**/*.mdx", "docs.json"]\nalwaysApply: false'],
+)
+def test_build_preserves_native_cursor_rule_frontmatter(tmp_path: Path, settings: str) -> None:
+    hub_root = tmp_path / "hub"
+    init_hub(hub_root)
+    (hub_root / "plugins/pig.yaml").write_text("id: pig\nname: PIG\nincludes:\n  - rule:docs-style\n")
+    contents = (
+        f"---\ndescription: Apply the documentation conventions\n{settings}\n---\n\n# Style\n\nUse clear prose.\n"
+    )
+    (hub_root / "assets/rules/docs-style.mdc").write_text(contents)
+    (hub_root / "assets/rules/docs-style.asset.yaml").write_text(
+        "id: docs-style\ntype: rule\ntitle: Documentation style\nsupport:\n  cursor:\n    mode: native\n"
+    )
+
+    build_hub(hub_root)
+
+    assert (hub_root / "dist/cursor/pig/rules/docs-style.mdc").read_text() == contents
+    manifest = json.loads((hub_root / "dist/cursor/pig/.cursor-plugin/plugin.json").read_text())
+    assert manifest["rules"] == "./rules/"
+
+
 def test_build_renders_projected_rules_native_cursor_rules_and_mcp_assets(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Acme")
