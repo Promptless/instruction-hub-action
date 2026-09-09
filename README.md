@@ -153,9 +153,12 @@ include:
 
 The compiler defaults to `main`: each job fetches the latest merged toolchain
 when it starts and logs the resolved commit for diagnostics. Keep both the
-remote template URL and `toolchain-ref` on `main`. The template runs the same `scripts/run.sh` entrypoint as the
-GitHub Action, with GitLab workspace, repository, identity, and branch checks
-supplied by the template.
+remote template URL and `toolchain-ref` on `main`. When pinning, use the same
+commit in the template URL and `toolchain-ref`. The template runs the same
+`scripts/run.sh` entrypoint as the GitHub Action, with GitLab workspace,
+repository, identity, and branch checks supplied by the template. Source
+freshness checks live in the shared publisher, so a newer template must not
+be paired with an older toolchain.
 
 ### Direct action usage
 
