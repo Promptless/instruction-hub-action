@@ -86,6 +86,9 @@ def _render_cursor_rule(target_root: Path, asset: LoadedAsset) -> None:
     rule_path.parent.mkdir(parents=True, exist_ok=True)
     title = asset.metadata.title or asset.id
     content = _read_asset_markdown(asset)
+    if asset.type == "rule" and asset.metadata.support["cursor"].mode == "native" and _has_yaml_frontmatter(content):
+        rule_path.write_text(content)
+        return
     rule_path.write_text(f"---\ndescription: {json.dumps(title)}\nalwaysApply: false\n---\n\n{content.rstrip()}\n")
 
 
