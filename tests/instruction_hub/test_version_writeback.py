@@ -33,6 +33,19 @@ def test_writeback_rejects_invalid_version_without_changing_source(tmp_path: Pat
     assert (tmp_path / "hub.yaml").read_bytes() == before
 
 
+@pytest.mark.parametrize("style", ["|-", ">-"])
+def test_writeback_preserves_block_scalar_and_following_key(tmp_path: Path, style: str) -> None:
+    init_hub(tmp_path)
+    config_path = tmp_path / "hub.yaml"
+    source = config_path.read_text().replace("version: 0.1.0\n", f"version: {style} # released\n  0.1.0\n")
+    config_path.write_text(source)
+
+    write_hub_version(tmp_path, "0.4.0")
+
+    assert config_path.read_text() == source.replace("  0.1.0\n", "  0.4.0\n")
+    assert load_hub_config(tmp_path).version == "0.4.0"
+
+
 def test_config_rejects_old_version_key(tmp_path: Path) -> None:
     init_hub(tmp_path)
     config_path = tmp_path / "hub.yaml"

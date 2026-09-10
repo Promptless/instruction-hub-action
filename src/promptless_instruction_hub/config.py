@@ -86,7 +86,14 @@ def write_hub_version(hub_root: Path, version: str) -> None:
     if len(nodes) != 1 or not isinstance(nodes[0], yaml.ScalarNode):
         raise ValueError(f"{config_path}: expected exactly one scalar version")
     node = nodes[0]
-    updated = source[: node.start_mark.index] + version + source[node.end_mark.index :]
+    start, end = node.start_mark.index, node.end_mark.index
+    replacement = version
+    if node.style in {"|", ">"}:
+        # Keep the block header, comments, indentation, and separating newline.
+        # A valid SemVer block contains exactly one non-whitespace value.
+        start = source.index("\n", start) + 1
+        replacement = source[start:end].replace(config.version, version, 1)
+    updated = source[:start] + replacement + source[end:]
     try:
         updated_config = yaml.safe_load(updated)
     except yaml.YAMLError as exc:
