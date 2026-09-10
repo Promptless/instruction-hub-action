@@ -101,18 +101,18 @@ class HubConfig(BaseModel):
 
     org: str = Field(min_length=1)
     marketplace: MarketplaceDefinition
-    plugin_version: str
+    version: str
     stable_plugins: list[str] = Field(default_factory=lambda: [PIG_PLUGIN_ID], min_length=1)
     targets: list[Harness] = Field(default_factory=lambda: list(SUPPORTED_HARNESSES), min_length=1)
     trace_ingestion: TraceIngestionConfig = Field(default_factory=TraceIngestionConfig)
 
-    @field_validator("plugin_version")
+    @field_validator("version")
     @classmethod
-    def validate_plugin_version(cls, value: str) -> str:
-        """Require SemVer for native plugin versions."""
+    def validate_version(cls, value: str) -> str:
+        """Require SemVer for the hub release and its generated plugins."""
 
         if SEMVER_RE.match(value) is None:
-            msg = "plugin_version must be SemVer, for example 1.2.3"
+            msg = "version must be SemVer, for example 1.2.3"
             raise ValueError(msg)
         return value
 

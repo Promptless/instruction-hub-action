@@ -12,7 +12,7 @@ from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hu
 from promptless_instruction_hub.config import load_hub_config
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.fs import write_yaml
-from promptless_instruction_hub.release.versions import resolve_publish_plugin_version
+from promptless_instruction_hub.release.versions import resolve_publish_version
 
 from .helpers import FIXTURES
 
@@ -107,7 +107,7 @@ def test_legacy_config_requires_migration_without_writes(
     command: str,
 ) -> None:
     config_path = tmp_path / "hub.yaml"
-    original = "org: Acme\nplugin_id: acme-instruction-hub\nplugin_name: Acme\nplugin_version: 0.1.0\n"
+    original = "org: Acme\nplugin_id: acme-instruction-hub\nplugin_name: Acme\nversion: 0.1.0\n"
     config_path.write_text(original)
     assert main([command, "--hub", str(tmp_path)]) == 1
     assert "legacy hub configuration" in capsys.readouterr().err
@@ -129,14 +129,12 @@ def test_duplicate_plugin_ids_are_rejected(tmp_path: Path) -> None:
         validate_hub(tmp_path)
 
 
-def test_publish_accepts_release_from_before_identity_migration(tmp_path: Path) -> None:
+def test_publish_rejects_version_one_release(tmp_path: Path) -> None:
     init_hub(tmp_path, org="Acme", marketplace_id="acme-instruction-hub-marketplace")
     config = load_hub_config(tmp_path)
     write_yaml(tmp_path / "hub.yaml", {**config.model_dump(), "targets": ["cursor"]})
-    assert (
-        resolve_publish_plugin_version(
+    with pytest.raises(ValueError, match="hub.release.json: version is missing"):
+        resolve_publish_version(
             tmp_path,
             previous_release_root=FIXTURES / "legacy-release",
         )
-        == "0.1.8"
-    )

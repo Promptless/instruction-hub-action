@@ -99,7 +99,7 @@ def test_status_mcp_reports_release_metadata_without_git_commit(
     response = json.loads(capsys.readouterr().out)
     status = json.loads(response["result"]["content"][0]["text"])
     assert status["release_hash"]
-    assert status["plugin_version"] == "0.1.0"
+    assert status["version"] == "0.1.0"
     assert "git_commit" not in status
 
 
@@ -111,23 +111,24 @@ def test_release_manifest_schema_matches_generated_contract() -> None:
     assert "version_basis" in schema["required"]
     assert "managed_runtimes" in schema["required"]
     assert "git_commit" not in schema["properties"]
-    assert schema["properties"]["stable_packages"]["minItems"] == 1
+    assert schema["properties"]["stable_plugins"]["minItems"] == 1
     assert schema["properties"]["targets"]["minItems"] == 1
     assert schema["properties"]["target_hashes"]["minProperties"] == 1
     assert "default" not in schema["properties"]["managed_runtimes"]
     version_basis_schema = schema["properties"]["version_basis"]
     assert version_basis_schema["required"] == [
         "org",
-        "plugin",
-        "stable_packages",
+        "version",
+        "marketplace",
+        "stable_plugins",
         "targets",
-        "packages",
+        "plugins",
         "target_hashes",
         "managed_runtimes",
     ]
-    assert version_basis_schema["properties"]["stable_packages"]["minItems"] == 1
+    assert version_basis_schema["properties"]["stable_plugins"]["minItems"] == 1
     assert version_basis_schema["properties"]["targets"]["minItems"] == 1
-    assert version_basis_schema["properties"]["packages"]["minItems"] == 1
+    assert version_basis_schema["properties"]["plugins"]["minItems"] == 1
     assert version_basis_schema["properties"]["target_hashes"] == {"$ref": "#/properties/target_hashes"}
     assert version_basis_schema["properties"]["managed_runtimes"] == {"$ref": "#/properties/managed_runtimes"}
     managed_runtime_schema = schema["properties"]["managed_runtimes"]["items"]
@@ -154,7 +155,7 @@ def test_release_manifest_schema_matches_generated_contract() -> None:
     assert "oneOf" not in managed_runtime_schema
     asset_schema = schema["properties"]["assets"]["items"]
     assert asset_schema["required"] == ["ref", "id", "type", "title", "source_path", "content_hash", "support"]
-    assert "pattern" in schema["properties"]["plugin"]["properties"]["version"]
+    assert "pattern" in schema["properties"]["version"]
     target_support_schema = schema["$defs"]["target_support"]
     assert "source" not in target_support_schema["properties"]
     assert target_support_schema["properties"]["reason"] == {"type": "string", "minLength": 1}

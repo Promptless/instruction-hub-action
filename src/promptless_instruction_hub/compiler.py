@@ -75,7 +75,7 @@ def init_hub(
     org: str = "Promptless",
     marketplace_id: str | None = None,
     marketplace_name: str | None = None,
-    plugin_version: str = "0.1.0",
+    version: str = "0.1.0",
 ) -> Path:
     """Initialize an empty customer-owned Instruction Hub repository."""
 
@@ -89,7 +89,7 @@ def init_hub(
             id=marketplace_id if marketplace_id is not None else f"{_slugify(org)}-instruction-hub",
             name=marketplace_name if marketplace_name is not None else f"{org} Instruction Hub",
         ),
-        plugin_version=plugin_version,
+        version=version,
         trace_ingestion=TraceIngestionConfig(enabled=False),
     )
     _write_file_if_missing(root / CONFIG_PATH, config.model_dump())
@@ -113,13 +113,13 @@ def init_hub(
     return root
 
 
-def build_hub(hub_root: Path, *, check: bool = False, plugin_version: str | None = None) -> BuildResult:
+def build_hub(hub_root: Path, *, check: bool = False, version: str | None = None) -> BuildResult:
     """Build generated target artifacts and manifests, or check that they are current."""
 
     root = hub_root.resolve()
     validation = validate_hub(root)
-    if plugin_version is not None:
-        validation = _with_plugin_version(validation, plugin_version)
+    if version is not None:
+        validation = _with_version(validation, version)
     with tempfile.TemporaryDirectory(prefix="promptless-instruction-hub-") as temp_dir:
         output_root = Path(temp_dir)
         release_manifest = _compile_hub(output_root, validation)
@@ -176,8 +176,8 @@ def _replace_generated_output(hub_root: Path, output_root: Path) -> None:
         replace_tree(output_root / relative_path, hub_root / relative_path)
 
 
-def _with_plugin_version(validation: ValidationResult, plugin_version: str) -> ValidationResult:
-    config = HubConfig.model_validate({**validation.config.model_dump(), "plugin_version": plugin_version})
+def _with_version(validation: ValidationResult, version: str) -> ValidationResult:
+    config = HubConfig.model_validate({**validation.config.model_dump(), "version": version})
     return ValidationResult(
         config=config,
         plugins=validation.plugins,

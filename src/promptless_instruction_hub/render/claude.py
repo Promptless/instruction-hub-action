@@ -50,7 +50,7 @@ def write_marketplace(output_root: Path, config: HubConfig, plugins: Sequence[St
                 "source": f"./dist/claude/{stable_plugin.definition.id}",
                 "displayName": stable_plugin.definition.name,
                 "description": plugin_description(config, stable_plugin.definition),
-                "version": config.plugin_version,
+                "version": config.version,
                 "author": {"name": config.org},
                 "category": "Productivity",
             }

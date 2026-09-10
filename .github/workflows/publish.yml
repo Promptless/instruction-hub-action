@@ -14,10 +14,14 @@ on:
         type: string
         default: release/stable
       source-branch:
-        description: Branch allowed to publish generated artifacts.
+        description: Source branch that publishes artifacts and receives the resolved hub version.
         required: false
         type: string
         default: main
+
+concurrency:
+  group: instruction-hub-publish-${{ inputs.source-branch }}-${{ inputs.release-branch }}
+  cancel-in-progress: false
 
 jobs:
   instruction-hub:

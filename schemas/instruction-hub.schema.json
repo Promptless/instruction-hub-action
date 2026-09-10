@@ -4,7 +4,7 @@
   "title": "Promptless Instruction Hub Config",
   "type": "object",
   "additionalProperties": false,
-  "required": ["org", "marketplace", "plugin_version"],
+  "required": ["org", "marketplace", "version"],
   "properties": {
     "org": {
       "type": "string",
@@ -25,7 +25,7 @@
         }
       }
     },
-    "plugin_version": {
+    "version": {
       "type": "string",
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
     },

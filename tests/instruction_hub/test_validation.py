@@ -22,7 +22,7 @@ def test_validate_rejects_empty_stable_plugins(tmp_path: Path) -> None:
                 "marketplace:",
                 "  id: acme-instruction-hub",
                 "  name: Acme Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "stable_plugins: []",
                 "",
             ]
@@ -112,8 +112,8 @@ def test_validate_rejects_unsafe_asset_ids(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "config_text",
     [
-        "org: ''\nmarketplace:\n  id: acme-instruction-hub\n  name: Acme Instruction Hub\nplugin_version: 0.1.0\n",
-        "org: Acme\nmarketplace:\n  id: acme-instruction-hub\n  name: ''\nplugin_version: 0.1.0\n",
+        "org: ''\nmarketplace:\n  id: acme-instruction-hub\n  name: Acme Instruction Hub\nversion: 0.1.0\n",
+        "org: Acme\nmarketplace:\n  id: acme-instruction-hub\n  name: ''\nversion: 0.1.0\n",
     ],
 )
 def test_validate_rejects_empty_required_config_strings(tmp_path: Path, config_text: str) -> None:
@@ -135,7 +135,7 @@ def test_validate_rejects_empty_target_list(tmp_path: Path) -> None:
                 "marketplace:",
                 "  id: acme-instruction-hub",
                 "  name: Acme Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "targets: []",
                 "",
             ]

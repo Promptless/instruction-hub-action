@@ -211,12 +211,15 @@ restore_push_credentials() {
   original_origin_url=""
 }
 
-push_origin_ref() {
+push_origin_refs() {
   local cwd="$1"
-  local refspec="$2"
+  shift
   local status=0
   configure_push_credentials
-  git -C "$cwd" push origin "$refspec" || status=$?
+  git -C "$cwd" push --atomic \
+    "--force-with-lease=refs/heads/$source_branch:$source_base" \
+    "--force-with-lease=refs/heads/$release_branch:$release_base" \
+    origin "$@" || status=$?
   restore_push_credentials
   return "$status"
 }
@@ -253,18 +256,40 @@ fetch_release_branch() {
   fi
 }
 
+snapshot_publish_source() {
+  if ! git -C "$repo_root" diff --quiet || ! git -C "$repo_root" diff --cached --quiet; then
+    echo "Publish requires committed source changes and a clean index." >&2
+    exit 1
+  fi
+  if [[ -n "$(git -C "$hub_root" ls-files --others --exclude-standard -- hub.yaml plugins assets hub.repo-context.json)" ]]; then
+    echo "Publish requires all hub source files to be committed." >&2
+    exit 1
+  fi
+  local status=0
+  configure_push_credentials
+  git -C "$repo_root" fetch origin "+refs/heads/$source_branch:refs/remotes/origin/$source_branch" || status=$?
+  restore_push_credentials
+  [[ "$status" -eq 0 ]] || exit "$status"
+  source_base="$(git -C "$repo_root" rev-parse "origin/$source_branch")"
+  if ! git -C "$repo_root" merge-base --is-ancestor "$source_base" HEAD; then
+    echo "Source branch advanced; rerun publication from the latest $source_branch." >&2
+    exit 1
+  fi
+}
+
 copy_previous_release_branch() {
   local destination_root="$1"
 
   if remote_release_branch_exists; then
     fetch_release_branch
-    git -C "$repo_root" archive "origin/$release_branch" | tar -x -C "$destination_root"
+    release_base="$(git -C "$repo_root" rev-parse "origin/$release_branch")"
+    git -C "$repo_root" archive "$release_base" | tar -x -C "$destination_root"
     return 0
   fi
   return 1
 }
 
-resolve_publish_plugin_version() {
+resolve_publish_version() {
   local previous_release_root="$1"
   local hub_rel="$2"
   local previous_release_exists="$3"
@@ -361,7 +386,7 @@ restore_generated_paths_on_default_branch() {
   done
 }
 
-publish_release_branch() {
+prepare_release_commit() {
   local hub_rel="$1"
   local payload_root="$2"
   local worktree
@@ -372,12 +397,11 @@ publish_release_branch() {
   git -C "$repo_root" config user.name "$commit_user_name"
   git -C "$repo_root" config user.email "$commit_user_email"
 
-  if remote_release_branch_exists; then
-    fetch_release_branch
-    git -C "$repo_root" worktree add -B "$release_branch" "$worktree" "origin/$release_branch"
+  if [[ -n "$release_base" ]]; then
+    git -C "$repo_root" worktree add --detach "$worktree" "$release_base"
   else
     git -C "$repo_root" worktree add --detach "$worktree" HEAD
-    git -C "$worktree" checkout --orphan "$release_branch"
+    git -C "$worktree" checkout --orphan "hub-release-$$"
     if [[ -n "$(git -C "$worktree" ls-files)" ]]; then
       git -C "$worktree" rm -rf .
     fi
@@ -397,12 +421,15 @@ publish_release_branch() {
 
   if ! git -C "$worktree" diff --cached --quiet; then
     git -C "$worktree" commit -m "$commit_message"
-    push_origin_ref "$worktree" "HEAD:$release_branch"
   else
     echo "No release branch changes to publish."
   fi
 
+  release_commit="$(git -C "$worktree" rev-parse HEAD)"
   git -C "$repo_root" worktree remove "$worktree" --force
+  if [[ -z "$release_base" ]]; then
+    git -C "$repo_root" branch -D "hub-release-$$"
+  fi
 }
 
 prepare_marketplace_pointer() {
@@ -552,19 +579,20 @@ PY
   marketplace_pointer_paths+=("$destination_relative_path")
 }
 
-commit_prepared_marketplace_pointers() {
+prepare_source_commit() {
   local pointer_root="$1"
-  shift
-  local pointer_paths=("$@")
+  local hub_rel="$2"
+  local worktree
+  worktree="$(mktemp -d)"
+  rm -rf "$worktree"
+  release_worktrees+=("$worktree")
+  git -C "$repo_root" worktree add --detach "$worktree" HEAD
+  local config_path="${hub_rel:+$hub_rel/}hub.yaml"
+  pig set-version --hub "$worktree/${hub_rel:-.}" --version "$publish_version"
 
-  if [[ "${#pointer_paths[@]}" -eq 0 ]]; then
-    echo "No marketplace pointers to publish."
-    return
-  fi
-
-  for pointer_path in "${pointer_paths[@]}"; do
+  for pointer_path in "${marketplace_pointer_paths[@]}"; do
     local prepared_path="$pointer_root/$pointer_path"
-    local destination_path="$repo_root/$pointer_path"
+    local destination_path="$worktree/$pointer_path"
     if [[ -f "$prepared_path" ]]; then
       mkdir -p "$(dirname "$destination_path")"
       cp "$prepared_path" "$destination_path"
@@ -573,13 +601,16 @@ commit_prepared_marketplace_pointers() {
     fi
   done
 
-  git -C "$repo_root" add -A -- "${pointer_paths[@]}"
-  if ! git -C "$repo_root" diff --cached --quiet -- "${pointer_paths[@]}"; then
-    git -C "$repo_root" commit -m "Update Instruction Hub marketplace pointers"
-    push_origin_ref "$repo_root" "HEAD:$source_branch"
+  git -C "$worktree" add -A -- "$config_path" "${marketplace_pointer_paths[@]}"
+  # Git skips lease checks for unchanged refs. Every release update needs a
+  # source commit, including explicit versions whose hub.yaml is already current.
+  if [[ "$release_commit" != "$release_base" ]] || ! git -C "$worktree" diff --cached --quiet; then
+    git -C "$worktree" commit --allow-empty -m "Record Instruction Hub release $publish_version"
   else
-    echo "No marketplace pointer changes to publish."
+    echo "No source version or marketplace pointer changes to publish."
   fi
+  source_commit="$(git -C "$worktree" rev-parse HEAD)"
+  git -C "$repo_root" worktree remove "$worktree" --force
 }
 
 case "$mode" in
@@ -597,6 +628,8 @@ case "$mode" in
   publish)
     require_publish_source_ref
     hub_rel="$(hub_relative_path)"
+    snapshot_publish_source
+    release_base=""
     previous_release_root="$(mktemp -d)"
     payload_root="$(mktemp -d)"
     pointer_root="$(mktemp -d)"
@@ -607,8 +640,8 @@ case "$mode" in
     else
       previous_release_exists=false
     fi
-    publish_plugin_version="$(resolve_publish_plugin_version "$previous_release_root" "$hub_rel" "$previous_release_exists")"
-    pig build --hub "$hub_root" --plugin-version "$publish_plugin_version"
+    publish_version="$(resolve_publish_version "$previous_release_root" "$hub_rel" "$previous_release_exists")"
+    pig build --hub "$hub_root" --version "$publish_version"
     copy_generated_paths "$payload_root" "$hub_rel"
     restore_generated_paths_on_default_branch "$hub_rel"
     marketplace_pointer_paths=()
@@ -621,8 +654,15 @@ case "$mode" in
     if [[ "$update_cursor_pointer" == "true" ]]; then
       prepare_marketplace_pointer "cursor" "$payload_root" "$pointer_root" "$hub_rel"
     fi
-    publish_release_branch "$hub_rel" "$payload_root"
-    commit_prepared_marketplace_pointers "$pointer_root" "${marketplace_pointer_paths[@]}"
+    prepare_release_commit "$hub_rel" "$payload_root"
+    prepare_source_commit "$pointer_root" "$hub_rel"
+    # Also guard the release snapshot when only source metadata needs repair.
+    if [[ "$source_commit" != "$source_base" && "$release_commit" == "$release_base" ]]; then
+      release_commit="$(git -C "$repo_root" commit-tree "$release_commit^{tree}" -p "$release_commit" \
+        -m "Record Instruction Hub source version $publish_version")"
+    fi
+    push_origin_refs "$repo_root" "$source_commit:refs/heads/$source_branch" "$release_commit:refs/heads/$release_branch"
+    git -C "$repo_root" merge --ff-only "$source_commit"
     ;;
   *)
     echo "Unsupported mode: $mode. Expected build, check, or publish." >&2

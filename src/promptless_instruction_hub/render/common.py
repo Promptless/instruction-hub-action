@@ -15,7 +15,7 @@ def base_plugin_manifest(config: HubConfig, plugin: PluginDefinition) -> dict[st
 
     return {
         "name": plugin.id,
-        "version": config.plugin_version,
+        "version": config.version,
         "description": plugin_description(config, plugin),
     }
 
