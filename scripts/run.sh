@@ -257,6 +257,8 @@ fetch_release_branch() {
 }
 
 snapshot_publish_source() {
+  local hub_rel="$1"
+  local hub_prefix="${hub_rel:+$hub_rel/}"
   if ! git -C "$repo_root" diff --quiet || ! git -C "$repo_root" diff --cached --quiet; then
     echo "Publish requires committed source changes and a clean index." >&2
     exit 1
@@ -271,9 +273,22 @@ snapshot_publish_source() {
   restore_push_credentials
   [[ "$status" -eq 0 ]] || exit "$status"
   source_base="$(git -C "$repo_root" rev-parse "origin/$source_branch")"
-  if ! git -C "$repo_root" merge-base --is-ancestor "$source_base" HEAD; then
-    echo "Source branch advanced; rerun publication from the latest $source_branch." >&2
-    exit 1
+  if git -C "$repo_root" merge-base --is-ancestor "$source_base" HEAD; then
+    return
+  fi
+
+  # Compare release inputs, allowing pointer-only and unrelated commits to advance.
+  if git -C "$repo_root" diff --quiet HEAD "$source_base" -- \
+    ':(top,literal).github/workflows' ':(top,literal).gitlab-ci.yml' ':(top,literal).gitignore' \
+    ":(top,literal)${hub_prefix}.gitignore" ":(top,literal)${hub_prefix}hub.yaml" \
+    ":(top,literal)${hub_prefix}hub.repo-context.json" \
+    ":(top,literal)${hub_prefix}assets" ":(top,literal)${hub_prefix}plugins"; then
+    git -C "$repo_root" merge --ff-only "$source_base"
+  else
+    status=$?
+    [[ "$status" -eq 1 ]] || exit "$status"
+    echo "Hub source changed before publication; a newer pipeline owns publication."
+    exit 0
   fi
 }
 
@@ -628,7 +643,7 @@ case "$mode" in
   publish)
     require_publish_source_ref
     hub_rel="$(hub_relative_path)"
-    snapshot_publish_source
+    snapshot_publish_source "$hub_rel"
     release_base=""
     previous_release_root="$(mktemp -d)"
     payload_root="$(mktemp -d)"
