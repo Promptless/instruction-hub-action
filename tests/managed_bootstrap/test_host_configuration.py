@@ -475,7 +475,7 @@ def test_bootstrap_announces_plugin_update_per_host(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     enable_trace_ingestion(hub_root)
-    build_hub(hub_root, plugin_version="0.1.0")
+    build_hub(hub_root, version="0.1.0")
     server = _FakeWorkerServer()
     server.start()
     try:
@@ -505,7 +505,7 @@ def test_bootstrap_announces_plugin_update_per_host(tmp_path: Path) -> None:
         assert "updated to" not in first_codex_message
 
         # Rebuild the same hub at a newer version, then re-run: each host announces the change once.
-        build_hub(hub_root, plugin_version="0.2.0")
+        build_hub(hub_root, version="0.2.0")
         upgraded_claude, _ = _run_bootstrap(
             hub_root / "dist/claude/pig", "claude", claude_env, expected_status="configured"
         )
@@ -565,7 +565,7 @@ def test_bootstrap_defers_recording_update_until_notice_surfaces(tmp_path: Path)
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     enable_trace_ingestion(hub_root)
-    build_hub(hub_root, plugin_version="0.1.0")
+    build_hub(hub_root, version="0.1.0")
     server = _FakeWorkerServer()
     server.start()
     try:
@@ -594,7 +594,7 @@ def test_bootstrap_defers_recording_update_until_notice_surfaces(tmp_path: Path)
 
         # Upgrade, then hit a failing session (unreachable worker): the new version must NOT be
         # marked seen, because its update notice was never surfaced.
-        build_hub(hub_root, plugin_version="0.2.0")
+        build_hub(hub_root, version="0.2.0")
         _run_bootstrap(
             hub_root / "dist/claude/pig",
             "claude",

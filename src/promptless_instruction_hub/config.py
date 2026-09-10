@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
 from pydantic import ValidationError
 
 from promptless_instruction_hub.errors import InstructionHubError
@@ -67,3 +68,36 @@ def load_plugins(hub_root: Path) -> dict[str, PluginDefinition]:
             raise InstructionHubError(msg)
         plugins[plugin_definition.id] = plugin_definition
     return plugins
+
+
+def write_hub_version(hub_root: Path, version: str) -> None:
+    """Update the release version while preserving source formatting and comments."""
+
+    config = load_hub_config(hub_root)
+    HubConfig.model_validate({**config.model_dump(), "version": version})
+    if config.version == version:
+        return
+    config_path = hub_root / CONFIG_PATH
+    source = config_path.read_text()
+    document = yaml.compose(source)
+    if not isinstance(document, yaml.MappingNode):
+        raise ValueError(f"{config_path}: expected a YAML mapping")
+    nodes = [value for key, value in document.value if key.value == "version"]
+    if len(nodes) != 1 or not isinstance(nodes[0], yaml.ScalarNode):
+        raise ValueError(f"{config_path}: expected exactly one scalar version")
+    node = nodes[0]
+    start, end = node.start_mark.index, node.end_mark.index
+    replacement = version
+    if node.style in {"|", ">"}:
+        # Keep the block header, comments, indentation, and separating newline.
+        # A valid SemVer block contains exactly one non-whitespace value.
+        start = source.index("\n", start) + 1
+        replacement = source[start:end].replace(config.version, version, 1)
+    updated = source[:start] + replacement + source[end:]
+    try:
+        updated_config = yaml.safe_load(updated)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"{config_path}: version must be an independent YAML scalar") from exc
+    if updated_config != {**yaml.safe_load(source), "version": version}:
+        raise ValueError(f"{config_path}: version must be an independent YAML scalar")
+    config_path.write_text(updated)

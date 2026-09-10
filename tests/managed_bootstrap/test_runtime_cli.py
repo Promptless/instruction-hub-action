@@ -249,7 +249,7 @@ def test_detached_session_start_only_spawns_supervisor_and_preserves_stdin(
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     enable_trace_ingestion(hub_root)
-    build_hub(hub_root, plugin_version="1.2.3")
+    build_hub(hub_root, version="1.2.3")
     plugin_root = hub_root / "dist/codex/pig"
     transcript_path = tmp_path / "session.jsonl"
     before_launch = b'{"kind":"existing"}\n'
@@ -291,7 +291,7 @@ def test_session_start_launcher_emits_and_claims_local_notices_once(
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     enable_trace_ingestion(hub_root)
-    build_hub(hub_root, plugin_version="0.2.0")
+    build_hub(hub_root, version="0.2.0")
     plugin_root = hub_root / "dist/codex/pig"
     home = tmp_path / "home"
     state_path = _host_state_path(home)

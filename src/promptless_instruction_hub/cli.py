@@ -7,11 +7,11 @@ import json
 import sys
 from pathlib import Path
 
-from promptless_instruction_hub.config import RELEASE_MANIFEST_PATH
+from promptless_instruction_hub.config import RELEASE_MANIFEST_PATH, write_hub_version
 from promptless_instruction_hub.compiler import build_hub, init_hub, validate_hub, verify_hub
 from promptless_instruction_hub.errors import InstructionHubError
 from promptless_instruction_hub.mcp_status import run_status_mcp
-from promptless_instruction_hub.release.versions import resolve_publish_plugin_version
+from promptless_instruction_hub.release.versions import resolve_publish_version
 from promptless_instruction_hub.scan.hub import scan_hub
 from promptless_instruction_hub.status import summarize_release_manifest
 
@@ -37,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--org", default="Promptless")
     init_parser.add_argument("--marketplace-id")
     init_parser.add_argument("--marketplace-name")
-    init_parser.add_argument("--plugin-version", default="0.1.0")
+    init_parser.add_argument("--version", default="0.1.0")
 
     scan_parser = subcommands.add_parser("scan", help="import reusable assets and inventory repo context")
     _add_hub_arg(scan_parser)
@@ -55,7 +55,11 @@ def _build_parser() -> argparse.ArgumentParser:
     build_parser = subcommands.add_parser("build", help="generate target distribution artifacts")
     _add_hub_arg(build_parser)
     build_parser.add_argument("--check", action="store_true", help="fail if generated artifacts are stale")
-    build_parser.add_argument("--plugin-version", help=argparse.SUPPRESS)
+    build_parser.add_argument("--version", help=argparse.SUPPRESS)
+
+    version_parser = subcommands.add_parser("set-version", help="set the hub release version")
+    _add_hub_arg(version_parser)
+    version_parser.add_argument("--version", required=True)
 
     status_parser = subcommands.add_parser("status", help="print local release metadata")
     status_parser.add_argument("--manifest", type=Path, default=RELEASE_MANIFEST_PATH)
@@ -82,7 +86,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             org=args.org,
             marketplace_id=args.marketplace_id,
             marketplace_name=args.marketplace_name,
-            plugin_version=args.plugin_version,
+            version=args.version,
         )
         print(f"initialized Instruction Hub at {root}")
         return 0
@@ -104,18 +108,21 @@ def _dispatch(args: argparse.Namespace) -> int:
         )
         return 0
     if args.command == "build":
-        result = build_hub(args.hub, check=args.check, plugin_version=args.plugin_version)
+        result = build_hub(args.hub, check=args.check, version=args.version)
         verb = "checked" if result.checked else "built"
         print(f"{verb} release {result.release_id} ({result.release_hash[:12]})")
         return 0
     if args.command == "publish-version":
         print(
-            resolve_publish_plugin_version(
+            resolve_publish_version(
                 args.hub,
                 previous_release_root=args.previous_release_root,
                 hub_relative_path=args.hub_relative_path,
             )
         )
+        return 0
+    if args.command == "set-version":
+        write_hub_version(args.hub, args.version)
         return 0
     if args.command == "status":
         print(json.dumps(summarize_release_manifest(args.manifest), indent=2, sort_keys=True))

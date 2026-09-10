@@ -546,7 +546,7 @@ def test_action_publish_second_run_is_noop(tmp_path: Path, server_url: str) -> N
     assert first.returncode == 0, first.stdout + first.stderr
     assert second.returncode == 0, second.stdout + second.stderr
     assert "No release branch changes to publish." in second.stdout
-    assert "No marketplace pointer changes to publish." in second.stdout
+    assert "No source version or marketplace pointer changes to publish." in second.stdout
 
 
 @pytest.mark.parametrize("server_url", ["https://github.com", "https://gitlab.com"])
@@ -576,9 +576,9 @@ def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_pa
     assert _release_branch_plugin_versions(repo) == {"0.1.1"}
     release_manifest = json.loads(_git_output(repo, "show", "origin/release/stable:hub.release.json"))
     stable_channel = json.loads(_git_output(repo, "show", "origin/release/stable:hub.stable.json"))
-    assert release_manifest["plugin"]["version"] == "0.1.1"
-    assert stable_channel["plugin_version"] == "0.1.1"
-    assert "plugin_version: 0.1.0" in (repo / "hub.yaml").read_text()
+    assert release_manifest["version"] == "0.1.1"
+    assert stable_channel["version"] == "0.1.1"
+    assert "version: 0.1.1" in (repo / "hub.yaml").read_text()
 
     third = _run_action(repo, tmp_path / "github-output-third.txt", extra_env=env)
     assert third.returncode == 0, third.stdout + third.stderr
@@ -587,14 +587,9 @@ def test_action_publish_bumps_generated_plugin_version_when_assets_change(tmp_pa
 
 def test_action_publish_removes_legacy_promptless_release_metadata(tmp_path: Path) -> None:
     repo = _init_action_repo(tmp_path / "publish-cleans-legacy-release-metadata", targets=("claude",))
-    _git(repo, "switch", "--orphan", "release/stable")
-    for path in repo.iterdir():
-        if path.name == ".git":
-            continue
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
+    first = _run_action(repo, tmp_path / "first.txt")
+    assert first.returncode == 0, first.stdout + first.stderr
+    _git(repo, "switch", "-c", "release/stable", "origin/release/stable")
     (repo / ".promptless/releases").mkdir(parents=True)
     (repo / ".promptless/channels").mkdir(parents=True)
     (repo / ".promptless/releases/current.json").write_text("{}\n")
@@ -665,3 +660,108 @@ def test_action_publish_removes_stale_pointer_when_target_is_removed(tmp_path: P
     _git(repo, "fetch", "origin", "release/stable")
     release_files = _git_output(repo, "ls-tree", "-r", "--name-only", "origin/release/stable").splitlines()
     assert ".claude-plugin/marketplace.json" not in release_files
+
+
+@pytest.mark.parametrize("rejected_branch", ["main", "release/stable"])
+@pytest.mark.parametrize("existing_release", [False, True])
+def test_action_publish_ref_rejection_keeps_both_remote_branches(
+    tmp_path: Path, rejected_branch: str, existing_release: bool
+) -> None:
+    repo = _init_action_repo(tmp_path / "atomic-rejection", targets=("gemini",))
+    remote = repo.parent / "remote.git"
+    if existing_release:
+        first = _run_action(repo, tmp_path / "first.txt")
+        assert first.returncode == 0, first.stdout + first.stderr
+    (repo / "hub.yaml").write_text((repo / "hub.yaml").read_text().replace("version: 0.1.0", "version: 0.2.0"))
+    _git(repo, "add", "hub.yaml")
+    _git(repo, "commit", "-m", "request minor version")
+    _git(repo, "push", "origin", "main")
+    before = _git_output(remote, "show-ref", "--heads")
+    local_before = _git_output(repo, "rev-parse", "HEAD")
+    hook = remote / "hooks/update"
+    hook.write_text(f'#!/bin/sh\n[ "$1" != "refs/heads/{rejected_branch}" ]\n')
+    hook.chmod(0o755)
+
+    result = _run_action(repo, tmp_path / "rejected.txt")
+
+    assert result.returncode != 0
+    assert "atomic" in result.stderr
+    assert _git_output(remote, "show-ref", "--heads") == before
+    assert _git_output(repo, "rev-parse", "HEAD") == local_before
+    assert _git_output(repo, "status", "--short") == ""
+
+
+@pytest.mark.parametrize("racing_branch", ["main", "release/stable"])
+def test_action_publish_concurrent_update_preserves_winner_and_other_branch(tmp_path: Path, racing_branch: str) -> None:
+    repo = _init_action_repo(tmp_path / "atomic-race", targets=("gemini",))
+    remote = repo.parent / "remote.git"
+    first = _run_action(repo, tmp_path / "first.txt")
+    assert first.returncode == 0, first.stdout + first.stderr
+    # The requested version is already on main: source still needs a recording
+    # commit so Git cannot omit it (and its lease) as an up-to-date ref.
+    (repo / "hub.yaml").write_text((repo / "hub.yaml").read_text().replace("version: 0.1.0", "version: 0.2.0"))
+    _git(repo, "add", "hub.yaml")
+    _git(repo, "commit", "-m", "request minor version")
+    _git(repo, "push", "origin", "main")
+    other_branch = "release/stable" if racing_branch == "main" else "main"
+    other_before = _git_output(remote, "rev-parse", f"refs/heads/{other_branch}")
+    raced_before = _git_output(remote, "rev-parse", f"refs/heads/{racing_branch}").strip()
+    winner = _git_output(
+        repo, "commit-tree", f"{raced_before}^{{tree}}", "-p", raced_before, "-m", "concurrent winner"
+    ).strip()
+    _git(repo, "push", "origin", f"{winner}:refs/heads/race-object")
+    hook = repo / ".git/hooks/pre-push"
+    hook.write_text(f'#!/bin/sh\ngit --git-dir="$2" update-ref refs/heads/{racing_branch} {winner} {raced_before}\n')
+    hook.chmod(0o755)
+
+    result = _run_action(repo, tmp_path / "race.txt")
+
+    assert result.returncode != 0
+    assert _git_output(remote, "rev-parse", f"refs/heads/{racing_branch}").strip() == winner
+    assert _git_output(remote, "rev-parse", f"refs/heads/{other_branch}") == other_before
+
+
+def test_action_publish_requires_atomic_push_support(tmp_path: Path) -> None:
+    repo = _init_action_repo(tmp_path / "no-atomic", targets=("gemini",))
+    remote = repo.parent / "remote.git"
+    _git(remote, "config", "receive.advertiseAtomic", "false")
+    before = _git_output(remote, "show-ref", "--heads")
+
+    result = _run_action(repo, tmp_path / "output.txt")
+
+    assert result.returncode != 0
+    assert "does not support --atomic push" in result.stderr
+    assert _git_output(remote, "show-ref", "--heads") == before
+
+
+@pytest.mark.parametrize("hub_root", [".", "docs/hub"])
+def test_action_publish_repairs_source_version_and_then_is_noop(tmp_path: Path, hub_root: str) -> None:
+    repo = _init_action_repo(tmp_path / "repair-version", targets=("gemini",), hub_root_name=hub_root)
+    config_path = repo / hub_root / "hub.yaml"
+    config_path.write_text(config_path.read_text().replace("version: 0.1.0", "version: 0.4.0"))
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "request version")
+    first = _run_action(repo, tmp_path / "first.txt", hub_root=hub_root)
+    assert first.returncode == 0, first.stdout + first.stderr
+    config_path.write_text(config_path.read_text().replace("version: 0.4.0", "version: 0.1.0"))
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "stale source version")
+
+    repair = _run_action(repo, tmp_path / "repair.txt", hub_root=hub_root)
+
+    assert repair.returncode == 0, repair.stdout + repair.stderr
+    assert "version: 0.4.0" in config_path.read_text()
+    remote = repo.parent / "remote.git"
+    repaired_refs = _git_output(remote, "show-ref", "--heads")
+    again = _run_action(repo, tmp_path / "again.txt", hub_root=hub_root)
+    assert again.returncode == 0, again.stdout + again.stderr
+    assert _git_output(remote, "show-ref", "--heads") == repaired_refs
+
+
+def test_action_publish_rejects_untracked_source(tmp_path: Path) -> None:
+    repo = _init_action_repo(tmp_path / "untracked-source", targets=("gemini",))
+    (repo / "plugins/new.yaml").write_text("id: new\nname: New\nincludes: []\n")
+    result = _run_action(repo, tmp_path / "output.txt")
+    assert result.returncode != 0
+    assert "all hub source files to be committed" in result.stderr
+    assert not _remote_branch_exists(repo, "release/stable")

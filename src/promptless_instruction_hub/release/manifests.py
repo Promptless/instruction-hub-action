@@ -20,17 +20,15 @@ def build_release_manifest(
     """Build the deterministic release manifest for generated target output."""
 
     target_hashes = build_target_hashes(output_root, validation)
-    # Keep v1 wire keys for deployed release readers and publish history.
-    # The source model uses marketplace and plugin identities.
     base_manifest: dict[str, JsonValue] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "org": validation.config.org,
-        "plugin": {
+        "version": validation.config.version,
+        "marketplace": {
             "id": validation.config.marketplace.id,
             "name": validation.config.marketplace.name,
-            "version": validation.config.plugin_version,
         },
-        "stable_packages": validation.config.stable_plugins,
+        "stable_plugins": validation.config.stable_plugins,
         "targets": validation.config.targets,
         "target_hashes": target_hashes,
         "managed_runtimes": [runtime.to_manifest() for runtime in managed_runtimes],
@@ -38,7 +36,7 @@ def build_release_manifest(
         "version_basis": build_release_version_basis(output_root, validation, managed_runtimes),
     }
     content_hash = stable_hash(base_manifest)
-    base_manifest["release_id"] = f"{validation.config.plugin_version}+{content_hash[:12]}"
+    base_manifest["release_id"] = f"{validation.config.version}+{content_hash[:12]}"
     base_manifest["release_hash"] = stable_hash(base_manifest)
     return base_manifest
 
@@ -52,14 +50,14 @@ def build_release_version_basis(
 
     return {
         "org": validation.config.org,
-        "plugin": {
+        "version": validation.config.version,
+        "marketplace": {
             "id": validation.config.marketplace.id,
             "name": validation.config.marketplace.name,
-            "version": validation.config.plugin_version,
         },
-        "stable_packages": validation.config.stable_plugins,
+        "stable_plugins": validation.config.stable_plugins,
         "targets": validation.config.targets,
-        "packages": [_plugin_version_basis(stable_plugin) for stable_plugin in validation.stable_plugins],
+        "plugins": [_plugin_version_basis(stable_plugin) for stable_plugin in validation.stable_plugins],
         "target_hashes": build_target_hashes(output_root, validation),
         "managed_runtimes": [runtime.to_manifest() for runtime in managed_runtimes],
     }
@@ -81,13 +79,11 @@ def write_release_files(output_root: Path, release_manifest: dict[str, JsonValue
     write_json(
         output_root / STABLE_CHANNEL_PATH,
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "channel": "stable",
             "release_id": release_manifest["release_id"],
             "release_hash": release_manifest["release_hash"],
-            "plugin_version": release_manifest["plugin"]["version"]
-            if isinstance(release_manifest["plugin"], dict)
-            else None,
+            "version": release_manifest["version"],
             "targets": release_manifest["targets"],
         },
     )

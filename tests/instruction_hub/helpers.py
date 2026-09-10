@@ -17,9 +17,7 @@ WORKFLOWS = REPO_ROOT / ".github/workflows"
 
 
 def _write_release_manifest_with_fresh_identity(manifest_path: Path, manifest: dict[str, Any]) -> None:
-    plugin = manifest.get("plugin")
-    assert isinstance(plugin, dict)
-    plugin_version = plugin.get("version")
+    plugin_version = manifest.get("version")
     assert isinstance(plugin_version, str)
     manifest.pop("release_id", None)
     manifest.pop("release_hash", None)
@@ -174,7 +172,7 @@ def _write_hub_config(hub_root: Path, targets: tuple[str, ...]) -> None:
                 "marketplace:",
                 "  id: acme-instruction-hub",
                 "  name: Acme Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "trace_ingestion:",
                 "  enabled: true",
                 "stable_plugins:",
@@ -196,7 +194,7 @@ def _configure_split_plugin_hub(hub_root: Path, targets: tuple[str, ...]) -> Non
                 "marketplace:",
                 "  id: acme-instruction-hub",
                 "  name: Acme Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "trace_ingestion:",
                 "  enabled: true",
                 "stable_plugins:",

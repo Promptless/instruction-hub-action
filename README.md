@@ -217,7 +217,7 @@ org: Promptless
 marketplace:
   id: promptless-instruction-hub
   name: Promptless Instruction Hub
-plugin_version: 0.1.0
+version: 0.1.0
 stable_plugins: [pig, dev]
 targets: [claude, codex, gemini, cursor]
 ```
@@ -244,8 +244,23 @@ IDs; it has no generated marketplace manifest.
 
 `pig init --org Acme` defaults to marketplace ID `acme-instruction-hub` and
 display name `Acme Instruction Hub`. Override those with `--marketplace-id` and
-`--marketplace-name`. `plugin_version` remains the shared version floor for all
-compiled plugins; publication advances the generated version when output changes.
+`--marketplace-name`. `version` is the hub release version shared by all compiled
+plugins. Publication compares generated output at the previous release version:
+changed output advances the patch version, while unchanged output keeps it.
+Set a higher `version` in `hub.yaml` to request a specific release, such as a
+minor or major bump. Publication never lowers the version.
+
+The publisher writes the resolved version back to `hub.yaml` and commits it
+with the source marketplace pointers. It pushes the source and release commits
+in one atomic Git transaction with explicit leases on both branch revisions.
+If either branch changes during the build, or either update is rejected, neither
+publish update lands. Rerun from the latest source branch after a race. The Git
+server must support atomic pushes, and the publisher needs write access to both
+branches. Publish requires committed source files and a clean index.
+
+An unchanged rerun creates no commits. If only one branch needs a content change,
+the other receives an empty recording commit so Git checks both leases. Merely
+writing the resolved version back does not cause another version bump.
 
 ### Migrating existing hubs
 
@@ -261,9 +276,13 @@ legacy fields and the old `packages/` directory with migration guidance.
    `stable_plugins` in `hub.yaml`. Keep each definition's `id`, `name`, and
    `includes`. Update custom CI path filters and scripts that reference the old
    directory or `pig init --plugin-id` / `--plugin-name` flags.
-3. Run `pig verify --hub .`, then publish using the upgraded toolchain. Existing
-   version 1 release manifests remain readable for publish-time version bumps.
-4. Refresh the marketplace and replace installed plugins using their new IDs.
+3. Rename `plugin_version` to `version` in `hub.yaml` and use `--version`
+   instead of `--plugin-version` in scripts. Version 2 release manifests use
+   top-level `version`, `marketplace`, `stable_plugins`, and `version_basis.plugins`.
+   Version 1 manifests are rejected. Coordinate a one-time rebuild of existing
+   release artifacts with the source migration before resuming publication.
+4. Run `pig verify --hub .`, then publish using the upgraded toolchain.
+5. Refresh the marketplace and replace installed plugins using their new IDs.
    For example, `promptless-instruction-hub-dev` becomes `dev`. Remove the old
    installation so its skills and hooks are not loaded alongside the new one.
    An updater cannot infer that these different plugin IDs are replacements.
@@ -273,19 +292,17 @@ skill namespaces, choose explicit IDs such as `acme-dev` for customer plugins.
 The compiler never adds that prefix automatically. The managed PIG plugin
 continues to require the ID `pig`.
 
-Version 1 release manifests and enrollment requests retain their existing field
-names for deployed readers: `plugin` contains marketplace metadata and the shared
-plugin version, `stable_packages` / `packages` describe plugins, and runtime
-`package_id` carries the source plugin ID. Runtime `plugin_id` now matches the
-literal ID in the native plugin manifest.
+`hub.release.json` and `hub.stable.json` both use `schema_version: 2` and the
+same top-level `version`. Runtime enrollment metadata still uses `plugin_version`
+for the installed plugin's version and `package_id` for the source plugin ID.
+Runtime `plugin_id` matches the literal ID in the native plugin manifest.
 
 ## Modes
 
 - `build`: validate the hub and run a build without committing generated files.
 - `check`: validate the hub and fail if committed generated output is stale.
-- `publish`: build generated output from `source-branch`, push it to
-  `release/stable`, and update `source-branch` marketplace pointers for
-  generated targets.
+- `publish`: build generated output from `source-branch` and atomically update
+  the release branch together with the source version and marketplace pointers.
 
 Customer hubs should usually use `build` for pull requests and `publish` after
 changes merge to the default branch. Use `check` only for repositories that

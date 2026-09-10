@@ -131,7 +131,7 @@ def test_build_emits_target_outputs_and_deterministic_manifests(tmp_path: Path) 
     assert {asset["title"] for asset in release_manifest["assets"]} == {"Repository MCP Servers", "Review Docs"}
 
 
-def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path: Path) -> None:
+def test_build_renders_stable_plugins_as_separate_marketplace_plugins(tmp_path: Path) -> None:
     hub_root = tmp_path / "hub"
     init_hub(hub_root, org="Promptless")
     (hub_root / "hub.yaml").write_text(
@@ -141,7 +141,7 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
                 "marketplace:",
                 "  id: promptless-instruction-hub",
                 "  name: Promptless Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "stable_plugins:",
                 "  - dev",
                 "  - ops",
@@ -202,17 +202,17 @@ def test_build_renders_stable_packages_as_separate_marketplace_plugins(tmp_path:
         ("pig", "dist/cursor/pig"),
     ]
     release_manifest = json.loads((hub_root / "hub.release.json").read_text())
-    assert release_manifest["stable_packages"] == ["dev", "ops", "pig"]
-    assert [(package["id"], package["name"]) for package in release_manifest["version_basis"]["packages"]] == [
+    assert release_manifest["stable_plugins"] == ["dev", "ops", "pig"]
+    assert [(package["id"], package["name"]) for package in release_manifest["version_basis"]["plugins"]] == [
         ("dev", "Dev"),
         ("ops", "Ops"),
         ("pig", "PIG"),
     ]
-    assert [asset["ref"] for asset in release_manifest["version_basis"]["packages"][0]["assets"]] == [
+    assert [asset["ref"] for asset in release_manifest["version_basis"]["plugins"][0]["assets"]] == [
         "skill:authoring-tools"
     ]
-    assert [asset["ref"] for asset in release_manifest["version_basis"]["packages"][1]["assets"]] == ["skill:runbooks"]
-    assert release_manifest["version_basis"]["packages"][2]["assets"] == []
+    assert [asset["ref"] for asset in release_manifest["version_basis"]["plugins"][1]["assets"]] == ["skill:runbooks"]
+    assert release_manifest["version_basis"]["plugins"][2]["assets"] == []
     assert [asset["ref"] for asset in release_manifest["assets"]] == [
         "skill:authoring-tools",
         "skill:runbooks",
@@ -344,7 +344,7 @@ def test_build_renders_projected_rules_native_cursor_rules_and_mcp_assets(tmp_pa
                 "marketplace:",
                 "  id: acme-instruction-hub",
                 "  name: Acme Instruction Hub",
-                "plugin_version: 0.1.0",
+                "version: 0.1.0",
                 "stable_plugins:",
                 "  - pig",
                 "targets:",

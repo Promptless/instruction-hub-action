@@ -132,7 +132,7 @@ def render_managed_runtimes(
         package_id=plugin.id,
         plugin_id=plugin.id,
         plugin_name=plugin.name,
-        plugin_version=config.plugin_version,
+        plugin_version=config.version,
         toolchain_version=_toolchain_version(),
         channel=HOST_RUNTIME_CHANNEL,
         version=HOST_RUNTIME_VERSION,

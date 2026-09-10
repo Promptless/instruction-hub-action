@@ -143,7 +143,7 @@ def test_bootstrap_welcomes_is_internal_promptless_user_once_per_plugin_version(
     hub_root = tmp_path / "hub"
     init_hub(hub_root)
     enable_trace_ingestion(hub_root)
-    build_hub(hub_root, plugin_version="0.1.0")
+    build_hub(hub_root, version="0.1.0")
     internal_policy = _policy_with()
     if identity_location == "envelope":
         internal_policy["user_email"] = "Adit@GoPromptless.AI"
@@ -203,7 +203,7 @@ def test_bootstrap_welcomes_is_internal_promptless_user_once_per_plugin_version(
         assert second_state[INTERNAL_WELCOME_SHOWN_AT_KEY] == shown_at
         assert second_state[INTERNAL_WELCOME_SHOWN_BY_VERSION_KEY] == {"0.1.0": shown_at}
 
-        build_hub(hub_root, plugin_version="0.2.0")
+        build_hub(hub_root, version="0.2.0")
         upgraded_payload, upgraded_result = _run_bootstrap(
             hub_root / "dist/codex/pig",
             "codex",
